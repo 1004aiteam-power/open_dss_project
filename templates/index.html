@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전력계통 Viewer — 22.9kV 배전망</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: 52px;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 20px;
+  }
+  #header h1 {
+    font-size: 15px; font-weight: 600;
+    color: #58a6ff;
+    letter-spacing: .5px;
+  }
+  #header .badge {
+    font-size: 11px; padding: 2px 8px;
+    background: #21262d; border: 1px solid #30363d;
+    border-radius: 12px; color: #8b949e;
+  }
+  #stats {
+    margin-left: auto;
+    display: flex; gap: 16px;
+    font-size: 12px; color: #8b949e;
+  }
+  #stats span b { color: #e6edf3; }
+
+  /* ── SVG canvas ── */
+  #canvas {
+    position: fixed;
+    top: 52px; left: 0; right: 280px; bottom: 0;
+    background: #0d1117;
+  }
+  svg {
+    width: 100%; height: 100%;
+  }
+
+  /* ── Legend ── */
+  #legend {
+    position: fixed;
+    top: 52px; right: 0;
+    width: 280px; bottom: 0;
+    background: #161b22;
+    border-left: 1px solid #30363d;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  #legend h3 {
+    font-size: 12px; text-transform: uppercase;
+    letter-spacing: 1px; color: #8b949e;
+    margin-bottom: 12px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px; font-size: 13px;
+  }
+  .legend-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend-rect {
+    width: 14px; height: 10px;
+    flex-shrink: 0; border-radius: 2px;
+  }
+
+  #legend hr { border: none; border-top: 1px solid #21262d; margin: 14px 0; }
+
+  /* ── Info panel ── */
+  #info {
+    margin-top: 4px;
+  }
+  #info h3 {
+    font-size: 12px; text-transform: uppercase;
+    letter-spacing: 1px; color: #8b949e;
+    margin-bottom: 8px;
+  }
+  #info-content {
+    font-size: 12px; line-height: 1.8;
+    color: #c9d1d9;
+  }
+  #info-content .key  { color: #8b949e; }
+  #info-content .val  { color: #e6edf3; font-weight: 600; }
+  #info-content .title {
+    font-size: 14px; font-weight: 700;
+    color: #58a6ff; margin-bottom: 6px;
+  }
+
+  /* ── Graph elements ── */
+  .link {
+    stroke-width: 2.5;
+    stroke-opacity: 0.7;
+    stroke-linecap: round;
+  }
+  .link.CONNECTS       { stroke: #388bfd; stroke-width: 3; stroke-opacity: 0.9; }
+  .link.TERMINAL       { stroke: #f0883e; stroke-width: 2; }
+  .link.CONNECTED_AT   { stroke: #444c56; stroke-width: 1.5; stroke-dasharray: 5 3; }
+
+  .node circle, .node rect, .node polygon { cursor: pointer; }
+  .node circle, .node rect, .node polygon {
+    transition: filter .15s;
+  }
+  .node:hover circle,
+  .node:hover rect,
+  .node:hover polygon {
+    filter: brightness(1.4);
+  }
+  .node.selected circle,
+  .node.selected rect,
+  .node.selected polygon {
+    filter: brightness(1.6) drop-shadow(0 0 8px currentColor);
+  }
+
+  .node-label {
+    font-size: 10px;
+    fill: #8b949e;
+    pointer-events: none;
+    text-anchor: middle;
+  }
+  .node-label.main {
+    font-size: 11px; fill: #c9d1d9; font-weight: 600;
+  }
+
+  /* Grid background */
+  .grid line {
+    stroke: #21262d; stroke-opacity: 0.5;
+  }
+
+  /* Zoom controls */
+  #zoom-controls {
+    position: fixed; bottom: 20px; left: 20px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  #zoom-controls button {
+    width: 32px; height: 32px;
+    background: #21262d; border: 1px solid #30363d;
+    color: #c9d1d9; font-size: 18px; line-height: 1;
+    border-radius: 6px; cursor: pointer;
+  }
+  #zoom-controls button:hover { background: #30363d; }
+
+  .tooltip {
+    position: fixed;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .1s;
+    z-index: 200;
+    max-width: 200px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>⚡ 전력계통 Viewer</h1>
+  <span class="badge">22.9kV 배전망</span>
+  <span class="badge">Neo4j CIM</span>
+  <div id="stats">
+    <span>노드 <b id="s-nodes">-</b></span>
+    <span>관계 <b id="s-links">-</b></span>
+    <span>PV <b id="s-pv">-</b></span>
+    <span>부하 <b id="s-load">-</b></span>
+  </div>
+</div>
+
+<div id="canvas">
+  <svg id="svg"></svg>
+</div>
+
+<div id="zoom-controls">
+  <button id="btn-in">+</button>
+  <button id="btn-fit">⊙</button>
+  <button id="btn-out">−</button>
+</div>
+
+<div id="legend">
+  <h3>노드 유형</h3>
+  <div class="legend-item"><div class="legend-dot" style="background:#f0883e"></div> 변전소 (Substation)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#d2a8ff"></div> 차단기 (Breaker)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#388bfd"></div> 접속점 (ConnectivityNode)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#56d364"></div> 태양광 (SolarUnit)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffa657"></div> 부하 (EnergyConsumer)</div>
+  <div class="legend-item"><div class="legend-rect" style="background:#388bfd; opacity:.6"></div> 선로 (ACLineSegment)</div>
+
+  <hr>
+  <h3>관계 유형</h3>
+  <div class="legend-item">
+    <svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#388bfd" stroke-width="2.5"/></svg>
+    CONNECTS (선로 경로)
+  </div>
+  <div class="legend-item">
+    <svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#f0883e" stroke-width="1.5"/></svg>
+    TERMINAL (CB 단자)
+  </div>
+  <div class="legend-item">
+    <svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#3d444d" stroke-width="1.5" stroke-dasharray="4 3"/></svg>
+    CONNECTED_AT (부하/PV)
+  </div>
+
+  <hr>
+  <div id="info">
+    <h3>선택 정보</h3>
+    <div id="info-content" style="color:#3d444d; font-style:italic">
+      노드를 클릭하세요
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const COLOR = {
+  Substation:        '#f0883e',
+  Breaker:           '#d2a8ff',
+  ConnectivityNode:  '#388bfd',
+  SolarUnit:         '#56d364',
+  EnergyConsumer:    '#ffa657',
+  ACLineSegment:     '#388bfd',
+};
+
+const svg = d3.select('#svg');
+const g   = svg.append('g');
+const tooltip = document.getElementById('tooltip');
+
+// Zoom
+const zoom = d3.zoom()
+  .scaleExtent([0.15, 4])
+  .on('zoom', e => g.attr('transform', e.transform));
+svg.call(zoom);
+
+document.getElementById('btn-in').onclick  = () => svg.transition().call(zoom.scaleBy, 1.3);
+document.getElementById('btn-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.77);
+document.getElementById('btn-fit').onclick = () => fitView(true);
+
+function fitView(animate = false) {
+  const svgEl = document.getElementById('svg');
+  const W = svgEl.clientWidth, H = svgEl.clientHeight;
+  if (!W || !H) return;
+
+  // Use node positions directly (exclude grid bbox)
+  const nodeEls = svgEl.querySelectorAll('.node');
+  if (!nodeEls.length) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodeEls.forEach(el => {
+    const t = el.getAttribute('transform') || '';
+    const m = t.match(/translate\(([^,]+),([^)]+)\)/);
+    if (m) {
+      const x = parseFloat(m[1]), y = parseFloat(m[2]);
+      minX = Math.min(minX, x); minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+    }
+  });
+  const pad = 80;
+  const bw = maxX - minX + pad * 2, bh = maxY - minY + pad * 2;
+  const scale = Math.min(W / bw, H / bh) * 0.92;
+  const tx = W / 2 - scale * (minX + (maxX - minX) / 2);
+  const ty = H / 2 - scale * (minY + (maxY - minY) / 2);
+  if (!isFinite(scale) || !isFinite(tx) || !isFinite(ty)) return;
+  const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+  if (animate) {
+    svg.transition().duration(600).call(zoom.transform, t);
+  } else {
+    svg.call(zoom.transform, t);
+  }
+}
+
+// Manual fixed layout — hierarchical top-down
+const LAYOUT = {
+  // ── 변전소 / 모선 / CB ──────────────────────────────
+  '변전소':              { x:  300, y: -530 },
+  'CN_변전소모선':       { x:  300, y: -430 },   // 수평 모선 바 (중앙)
+  'CB_변전소출구':       { x:    0, y: -330 },
+  'CN_CB출력':           { x:    0, y: -240 },
+
+  // ── 피더1: 주 간선 CN ────────────────────────────────
+  'CN_접속점1_고압A':    { x:   0, y: -120 },
+  'CN_접속점2_고압B':    { x:   0, y:   10 },
+  'CN_BranchPoint1':     { x:   0, y:  140 },
+
+  // ── 피더1: 좌/우 분기 CN ─────────────────────────────
+  'CN_좌측1_고압C_PV1':  { x: -240, y: 240 },
+  'CN_우측1_고압D_PV3':  { x:  240, y: 240 },
+  'CN_BranchPoint2L':    { x: -240, y: 350 },
+  'CN_BranchPoint2R':    { x:  240, y: 350 },
+  'CN_좌좌말단':         { x: -340, y: 460 },
+  'CN_좌우말단_PV2':     { x: -140, y: 460 },
+  'CN_우좌말단':         { x:  140, y: 460 },
+  'CN_우우말단_PV4':     { x:  340, y: 460 },
+
+  // ── 피더1: ACLineSegment 중간점 ─────────────────────
+  'Section①': { x:   0, y: -180 },
+  'Section②': { x:   0, y:  -55 },
+  'Section③': { x:   0, y:   75 },
+  'Section④': { x: -120, y: 190 },
+  'Section⑤': { x:  120, y: 190 },
+  'Section⑥': { x: -240, y: 295 },
+  'Section⑦': { x: -290, y: 405 },
+  'Section⑧': { x: -190, y: 405 },
+  'Section⑨': { x:  240, y: 295 },
+  'Section⑩': { x:  190, y: 405 },
+  'Section⑪': { x:  290, y: 405 },
+
+  // ── 피더2: CB / 간선 CN (빗살 구조, 오른쪽) ──────────
+  'CB2_변전소출구2':  { x:  600, y: -330 },
+  'CN2_CB출력':       { x:  600, y: -240 },
+  'CN2_간선1':        { x:  600, y:  -70 },
+  'CN2_간선2':        { x:  600, y:   90 },
+  'CN2_간선3':        { x:  600, y:  250 },
+  'CN2_간선말단':     { x:  600, y:  400 },
+
+  // ── 피더2: 지선 CN (간선에서 오른쪽으로 분기) ─────────
+  'CN2_지선1말단':    { x:  820, y:  -70 },
+  'CN2_지선2말단':    { x:  820, y:   90 },
+  'CN2_지선3말단':    { x:  820, y:  250 },
+
+  // ── 피더2: ACLineSegment 중간점 ─────────────────────
+  'F2_SectionA':  { x:  600, y: -145 },   // CN2_CB출력 ↔ CN2_간선1
+  'F2_SectionB':  { x:  600, y:   10 },   // CN2_간선1 ↔ CN2_간선2
+  'F2_SectionC':  { x:  600, y:  170 },   // CN2_간선2 ↔ CN2_간선3
+  'F2_SectionD':  { x:  600, y:  325 },   // CN2_간선3 ↔ CN2_간선말단
+  'F2_SectionL1': { x:  710, y:  -70 },   // CN2_간선1 → CN2_지선1말단
+  'F2_SectionL2': { x:  710, y:   90 },   // CN2_간선2 → CN2_지선2말단
+  'F2_SectionL3': { x:  710, y:  250 },   // CN2_간선3 → CN2_지선3말단
+};
+
+function nodePos(n) {
+  return LAYOUT[n.name] || { x: 0, y: 0 };
+}
+
+fetch('/api/graph').then(r => r.json()).then(data => {
+  const { nodes, links } = data;
+
+  // Stats
+  document.getElementById('s-nodes').textContent = nodes.length;
+  document.getElementById('s-links').textContent = links.length;
+  document.getElementById('s-pv').textContent    = nodes.filter(n => n.label === 'SolarUnit').length;
+  document.getElementById('s-load').textContent  = nodes.filter(n => n.label === 'EnergyConsumer').length;
+
+  // ID → node map
+  const byId = {};
+  nodes.forEach(n => { byId[n.id] = n; });
+
+  // Assign positions
+  nodes.forEach(n => {
+    const pos = nodePos(n);
+    n.x = pos.x; n.y = pos.y;
+  });
+
+  // Offset EnergyConsumer and SolarUnit near their CN
+  nodes.forEach(n => {
+    if (n.label === 'ACLineSegment') {
+      // find from/to links via CONNECTS
+      const cons = links.filter(l => l.type === 'CONNECTS' && (l.source === n.id || l.target === n.id));
+      const cnNodes = cons.map(l => byId[l.source === n.id ? l.target : l.source])
+                         .filter(x => x && x.label === 'ConnectivityNode');
+      if (cnNodes.length >= 2) {
+        n.x = (cnNodes[0].x + cnNodes[1].x) / 2;
+        n.y = (cnNodes[0].y + cnNodes[1].y) / 2;
+      }
+    }
+  });
+
+  // Place EC and PV offset from their CN
+  let ecOffset = 0, pvOffset = 0;
+  nodes.forEach(n => {
+    if (n.label === 'EnergyConsumer' || n.label === 'SolarUnit') {
+      const cnLink = links.find(l => l.type === 'CONNECTED_AT' && l.source === n.id);
+      if (cnLink) {
+        const cn = byId[cnLink.target];
+        if (cn) {
+          const side = n.label === 'EnergyConsumer' ? 1 : -1;
+          n.x = cn.x + side * 70;
+          n.y = cn.y + 30;
+        }
+      }
+    }
+  });
+
+  // Draw grid
+  const gridG = g.append('g').attr('class', 'grid');
+  for (let x = -800; x <= 800; x += 100)
+    gridG.append('line').attr('x1', x).attr('y1', -600).attr('x2', x).attr('y2', 700);
+  for (let y = -600; y <= 700; y += 100)
+    gridG.append('line').attr('x1', -800).attr('y1', y).attr('x2', 800).attr('y2', y);
+
+  // Draw links — CONNECTED_AT behind, CONNECTS and TERMINAL on top
+  ['CONNECTED_AT', 'TERMINAL', 'CONNECTS'].forEach(lt => {
+    g.selectAll(`.link-${lt}`)
+      .data(links.filter(l => l.type === lt))
+      .join('line')
+      .attr('class', `link ${lt}`)
+      .attr('x1', l => byId[l.source]?.x ?? 0)
+      .attr('y1', l => byId[l.source]?.y ?? 0)
+      .attr('x2', l => byId[l.target]?.x ?? 0)
+      .attr('y2', l => byId[l.target]?.y ?? 0)
+      .on('mouseover', (e, l) => {
+        let html = `<b>${l.type}</b>`;
+        if (l.direction) html += `<br>방향: ${l.direction}`;
+        showTooltip(e, html);
+      })
+      .on('mousemove', e => moveTooltip(e))
+      .on('mouseout', hideTooltip);
+  });
+
+  // Draw nodes
+  const nodeG = g.selectAll('.node')
+    .data(nodes)
+    .join('g')
+    .attr('class', 'node')
+    .attr('transform', n => `translate(${n.x},${n.y})`)
+    .on('click', (e, n) => selectNode(n))
+    .on('mouseover', (e, n) => showTooltip(e, tooltipHtml(n)))
+    .on('mousemove', e => moveTooltip(e))
+    .on('mouseout', hideTooltip);
+
+  // Shape by label
+  nodeG.each(function(n) {
+    const el = d3.select(this);
+    const c = COLOR[n.label] || '#8b949e';
+
+    if (n.label === 'Substation') {
+      el.append('rect')
+        .attr('x', -28).attr('y', -18)
+        .attr('width', 56).attr('height', 36)
+        .attr('rx', 4)
+        .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
+      el.append('text').attr('class', 'node-label main').attr('y', 5).text('⚡ 변전소');
+    }
+    else if (n.label === 'Breaker') {
+      el.append('rect')
+        .attr('x', -16).attr('y', -16)
+        .attr('width', 32).attr('height', 32)
+        .attr('rx', 3)
+        .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
+      el.append('text').attr('class', 'node-label').attr('y', 4).text('CB');
+    }
+    else if (n.label === 'ConnectivityNode') {
+      if (n.name === 'CN_변전소모선') {
+        // 수평 모선 바: CB1(x=0)과 CB2(x=600) 사이, 중심 x=300
+        el.append('rect')
+          .attr('x', -320).attr('y', -8)
+          .attr('width', 640).attr('height', 16)
+          .attr('rx', 4)
+          .attr('fill', '#1f3d5c').attr('stroke', '#388bfd').attr('stroke-width', 3);
+        el.append('text').attr('class', 'node-label')
+          .attr('y', -16).style('font-size', '10px').style('fill', '#58a6ff')
+          .text('22.9kV 모선');
+      } else {
+        el.append('circle').attr('r', 10)
+          .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
+      }
+    }
+    else if (n.label === 'SolarUnit') {
+      el.append('polygon')
+        .attr('points', '0,-14 12,7 -12,7')
+        .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
+      el.append('text').attr('class', 'node-label').attr('y', 20)
+        .style('fill', '#56d364')
+        .text(n.rated_mw ? `☀️ ${n.rated_mw}MW` : '☀️');
+    }
+    else if (n.label === 'EnergyConsumer') {
+      el.append('polygon')
+        .attr('points', '-10,-10 10,-10 0,12')
+        .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
+      el.append('text').attr('class', 'node-label').attr('y', 24)
+        .style('fill', '#ffa657')
+        .text(n.p_mw ? `${n.p_mw}MW` : '');
+    }
+    else if (n.label === 'ACLineSegment') {
+      el.append('rect')
+        .attr('x', -22).attr('y', -9)
+        .attr('width', 44).attr('height', 18)
+        .attr('rx', 3)
+        .attr('fill', '#1c3a5e').attr('stroke', '#388bfd').attr('stroke-width', 2);
+      el.append('text').attr('class', 'node-label')
+        .attr('y', 4).style('font-size', '9px').style('fill', '#58a6ff')
+        .text(n.name || '');
+      el.append('text').attr('class', 'node-label')
+        .attr('y', 26).style('font-size', '9px').style('fill', '#388bfd')
+        .text(n.length_km ? `${n.length_km}km` : '');
+    }
+  });
+
+  // CN type label
+  nodeG.filter(n => n.label === 'ConnectivityNode')
+    .append('text')
+    .attr('class', 'node-label')
+    .attr('y', 22)
+    .text(n => shortName(n.name));
+
+  // wait for DOM paint then fit
+  requestAnimationFrame(() => requestAnimationFrame(fitView));
+});
+
+function shortName(name) {
+  if (!name) return '';
+  return name.replace('CN_', '').replace(/_/g, ' ').substring(0, 10);
+}
+
+function tooltipHtml(n) {
+  const lines = [`<b>${n.label}</b>: ${n.name || ''}`];
+  if (n.voltage_kv)   lines.push(`전압: ${n.voltage_kv} kV`);
+  if (n.rated_mw)     lines.push(`정격: ${n.rated_mw} MW`);
+  if (n.p_mw)         lines.push(`유효전력: ${n.p_mw} MW`);
+  if (n.q_mvar)       lines.push(`무효전력: ${n.q_mvar} Mvar`);
+  if (n.length_km)    lines.push(`길이: ${n.length_km} km`);
+  if (n.r_ohm)        lines.push(`R: ${n.r_ohm} Ω`);
+  if (n.x_ohm)        lines.push(`X: ${n.x_ohm} Ω`);
+  if (n.conductor_mm2) lines.push(`전선: ACSR ${n.conductor_mm2}mm²`);
+  if (n.type)         lines.push(`타입: ${n.type}`);
+  return lines.join('<br>');
+}
+
+function showTooltip(e, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.opacity = 1;
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top  = (e.clientY - 10) + 'px';
+}
+function hideTooltip() { tooltip.style.opacity = 0; }
+
+let selectedEl = null;
+function selectNode(n) {
+  if (selectedEl) selectedEl.classed('selected', false);
+  const el = d3.selectAll('.node').filter(d => d.id === n.id);
+  el.classed('selected', true);
+  selectedEl = el;
+
+  const rows = [
+    `<div class="title">${n.label}</div>`,
+    `<span class="key">이름</span>&nbsp;<span class="val">${n.name || '-'}</span>`,
+  ];
+  if (n.voltage_kv)    rows.push(`<span class="key">전압</span> <span class="val">${n.voltage_kv} kV</span>`);
+  if (n.source_kv)     rows.push(`<span class="key">수전</span> <span class="val">${n.source_kv} kV</span>`);
+  if (n.rated_mw)      rows.push(`<span class="key">정격</span> <span class="val">${n.rated_mw} MW</span>`);
+  if (n.p_mw)          rows.push(`<span class="key">유효전력</span> <span class="val">${n.p_mw} MW</span>`);
+  if (n.q_mvar)        rows.push(`<span class="key">무효전력</span> <span class="val">${n.q_mvar} Mvar</span>`);
+  if (n.pf)            rows.push(`<span class="key">역률</span> <span class="val">${n.pf}</span>`);
+  if (n.length_km)     rows.push(`<span class="key">길이</span> <span class="val">${n.length_km} km</span>`);
+  if (n.r_ohm)         rows.push(`<span class="key">저항</span> <span class="val">${n.r_ohm} Ω</span>`);
+  if (n.x_ohm)         rows.push(`<span class="key">리액턴스</span> <span class="val">${n.x_ohm} Ω</span>`);
+  if (n.conductor_mm2) rows.push(`<span class="key">전선</span> <span class="val">ACSR ${n.conductor_mm2}mm²</span>`);
+  if (n.type)          rows.push(`<span class="key">타입</span> <span class="val">${n.type}</span>`);
+  if (n.normalOpen !== undefined) rows.push(`<span class="key">상태</span> <span class="val">${n.normalOpen ? '개방' : '투입'}</span>`);
+  if (n.ratedCurrent_A) rows.push(`<span class="key">정격전류</span> <span class="val">${n.ratedCurrent_A} A</span>`);
+
+  document.getElementById('info-content').innerHTML = rows.join('<br>');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+! ── 22.9kV 배전망 OpenDSS 모델 ──
+Clear
+New Circuit.KoreanDist22kV basekv=22.9 pu=1.0 angle=0 frequency=60 phases=3
+~ bus1=CN_변전소모선
+~ Isc3=10000  Isc1=10000  ! 무한 버스 (변전소)
+
+! ── 전선 코드 ──
+New Linecode.ACSR160 nphases=3 r1=0.192 x1=0.361 r0=0.192 x0=0.361 units=km
+New Linecode.ACSR95  nphases=3 r1=0.320 x1=0.380 r0=0.320 x0=0.380 units=km
+New Linecode.ACSR60  nphases=3 r1=0.507 x1=0.395 r0=0.507 x0=0.395 units=km
+
+! ── 차단기 (Switch) ──
+New Line.CB2_변전소출구2 bus1="CN_변전소모선" bus2="CN2_CB출력" switch=true length=0.001 linecode=ACSR160
+New Line.CB_변전소출구 bus1="CN_변전소모선" bus2="CN_CB출력" switch=true length=0.001 linecode=ACSR160
+
+! ── 선로 구간 ──
+New Line.F2_SectionA bus1="CN2_CB출력" bus2="CN2_간선1" linecode=ACSR160 length=0.6 units=km
+New Line.F2_SectionB bus1="CN2_간선1" bus2="CN2_간선2" linecode=ACSR160 length=1.0 units=km
+New Line.F2_SectionC bus1="CN2_간선2" bus2="CN2_간선3" linecode=ACSR160 length=1.0 units=km
+New Line.F2_SectionD bus1="CN2_간선3" bus2="CN2_간선말단" linecode=ACSR95 length=0.8 units=km
+New Line.F2_SectionL1 bus1="CN2_간선1" bus2="CN2_지선1말단" linecode=ACSR60 length=0.5 units=km
+New Line.F2_SectionL2 bus1="CN2_간선2" bus2="CN2_지선2말단" linecode=ACSR60 length=0.7 units=km
+New Line.F2_SectionL3 bus1="CN2_간선3" bus2="CN2_지선3말단" linecode=ACSR60 length=0.6 units=km
+New Line.Section① bus1="CN_CB출력" bus2="CN_접속점1_고압A" linecode=ACSR160 length=0.5 units=km
+New Line.Section② bus1="CN_접속점1_고압A" bus2="CN_접속점2_고압B" linecode=ACSR160 length=0.8 units=km
+New Line.Section③ bus1="CN_접속점2_고압B" bus2="CN_BranchPoint1" linecode=ACSR160 length=1.2 units=km
+New Line.Section④ bus1="CN_BranchPoint1" bus2="CN_좌측1_고압C_PV1" linecode=ACSR95 length=1.5 units=km
+New Line.Section⑤ bus1="CN_BranchPoint1" bus2="CN_우측1_고압D_PV3" linecode=ACSR95 length=1.5 units=km
+New Line.Section⑥ bus1="CN_좌측1_고압C_PV1" bus2="CN_BranchPoint2L" linecode=ACSR95 length=1.0 units=km
+New Line.Section⑦ bus1="CN_BranchPoint2L" bus2="CN_좌좌말단" linecode=ACSR95 length=0.8 units=km
+New Line.Section⑧ bus1="CN_BranchPoint2L" bus2="CN_좌우말단_PV2" linecode=ACSR95 length=0.8 units=km
+New Line.Section⑨ bus1="CN_우측1_고압D_PV3" bus2="CN_BranchPoint2R" linecode=ACSR95 length=1.0 units=km
+New Line.Section⑩ bus1="CN_BranchPoint2R" bus2="CN_우좌말단" linecode=ACSR95 length=0.8 units=km
+New Line.Section⑪ bus1="CN_BranchPoint2R" bus2="CN_우우말단_PV4" linecode=ACSR95 length=0.8 units=km
+
+! ── 부하 ──
+New Load.부하_좌좌 bus1="CN_좌좌말단" kv=22.9 kw=1800.0 kvar=592.0 phases=3 model=1 conn=wye
+New Load.부하_좌우 bus1="CN_좌우말단_PV2" kv=22.9 kw=900.0 kvar=296.0 phases=3 model=1 conn=wye
+New Load.고압고객D bus1="CN_우측1_고압D_PV3" kv=22.9 kw=1400.0 kvar=460.0 phases=3 model=1 conn=wye
+New Load.부하_우좌 bus1="CN_우좌말단" kv=22.9 kw=2000.0 kvar=657.0 phases=3 model=1 conn=wye
+New Load.부하_우우 bus1="CN_우우말단_PV4" kv=22.9 kw=1300.0 kvar=427.0 phases=3 model=1 conn=wye
+New Load.F2_고객1 bus1="CN2_지선1말단" kv=22.9 kw=800.0 kvar=263.0 phases=3 model=1 conn=wye
+New Load.F2_고객2 bus1="CN2_지선2말단" kv=22.9 kw=1200.0 kvar=394.0 phases=3 model=1 conn=wye
+New Load.F2_고객3 bus1="CN2_지선3말단" kv=22.9 kw=1000.0 kvar=329.0 phases=3 model=1 conn=wye
+New Load.F2_간선말단고객 bus1="CN2_간선말단" kv=22.9 kw=600.0 kvar=197.0 phases=3 model=1 conn=wye
+New Load.고압고객A bus1="CN_접속점1_고압A" kv=22.9 kw=1500.0 kvar=493.0 phases=3 model=1 conn=wye
+New Load.고압고객B bus1="CN_접속점2_고압B" kv=22.9 kw=2000.0 kvar=657.0 phases=3 model=1 conn=wye
+New Load.고압고객C bus1="CN_좌측1_고압C_PV1" kv=22.9 kw=1200.0 kvar=394.0 phases=3 model=1 conn=wye
+
+! ── 태양광 PV (50% 출력) ──
+New PVSystem.PV1_좌측1 bus1="CN_좌측1_고압C_PV1" kv=22.9 kva=1000 pmpp=500 irradiance=0.5 phases=3 conn=wye
+New PVSystem.PV2_좌우말단 bus1="CN_좌우말단_PV2" kv=22.9 kva=2000 pmpp=1000 irradiance=0.5 phases=3 conn=wye
+New PVSystem.PV3_우측1 bus1="CN_우측1_고압D_PV3" kv=22.9 kva=1500 pmpp=750 irradiance=0.5 phases=3 conn=wye
+New PVSystem.PV4_우우말단 bus1="CN_우우말단_PV4" kv=22.9 kva=500 pmpp=250 irradiance=0.5 phases=3 conn=wye
+New PVSystem.F2_PV_지선2 bus1="CN2_지선2말단" kv=22.9 kva=1500 pmpp=750 irradiance=0.5 phases=3 conn=wye
+
+! ── 해석 설정 ──
+Set Voltagebases=[22.9]
+CalcVoltageBases
+Set algorithm=Newton
+Set maxiter=100
+Set tolerance=0.0001
+
+Solve mode=snapshot
+
+! 결과 저장
+Export Voltages "/Users/allen_jung/my-python/open_dss_project/dss_output/voltages.csv"
+Export Losses   "/Users/allen_jung/my-python/open_dss_project/dss_output/losses.csv"
+Export Powers   "/Users/allen_jung/my-python/open_dss_project/dss_output/powers.csv"

@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+  xmlns:cim="http://iec.ch/TC57/2013/CIM-schema-cim16#"
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+>
+  <cim:Terminal rdf:about="urn:uuid:eccd4e53-d83f-485a-8fd0-de712e03fbb6">
+    <cim:IdentifiedObject.mRID>e6bb6384-b5a1-4f31-8ff9-87571bd8b751</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:24cb1826-e80a-44c2-9363-330f4d6ab3c2">
+        <cim:IdentifiedObject.name>Section⑧_BP2L~좌우말단</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>5a9462e0-2cdc-489d-a2c5-12fd72fb749f</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.8</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.256</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.304</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.768</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.912</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:687617ce-cacf-4d5f-9933-23088f6a304f">
+        <cim:IdentifiedObject.name>CN_좌우말단_PV2</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>734c2f30-2078-4d9c-837c-433e7322e863</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:f3f075f0-7580-4958-b03c-45d38d08200d">
+    <cim:IdentifiedObject.mRID>f1b5f69f-7221-4f5b-9474-c57dca7b6639</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:EnergyConsumer rdf:about="urn:uuid:baf33b7e-b8ab-4e76-a7ca-4472429596d7">
+        <cim:IdentifiedObject.name>고압고객D</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>d38c2129-fe86-47d6-a240-0cd64046c4f4</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:EnergyConsumer.p rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1400000.0</cim:EnergyConsumer.p>
+        <cim:EnergyConsumer.q rdf:datatype="http://www.w3.org/2001/XMLSchema#float">460158.0</cim:EnergyConsumer.q>
+        <cim:EnergyConsumer.pfixed rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1400000.0</cim:EnergyConsumer.pfixed>
+      </cim:EnergyConsumer>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:d2d9dc62-d6c2-4300-ab7d-31ba5c373f64">
+        <cim:IdentifiedObject.name>CN_우측1_고압D_PV3</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>87c0f5cf-5de4-4ed6-801a-7994dbf0eb1f</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:769bfb2e-c22e-4359-a1dc-f56e22be664e">
+    <cim:IdentifiedObject.mRID>ca126a77-fddb-4dde-85f0-3ceb9bd1a244</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:09ca3d51-199a-48e7-bb44-b1d527977197">
+        <cim:IdentifiedObject.name>Section⑥_좌측1~BP2L</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>10540d3f-e914-42d0-991e-d2ff2e4e39de</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.0</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.32</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.38</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.96</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.14</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:598c8611-71a2-453f-9879-bead88f778f7">
+        <cim:IdentifiedObject.name>CN_좌측1_고압C_PV1</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>65b7d8f2-ed5b-4a84-97f5-137f22124b5d</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:510b6541-ff84-4fa2-a420-20b799fa102a">
+    <cim:IdentifiedObject.mRID>80bceac7-3e5e-463e-8f8d-6e44d80fd959</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:c9545aca-89ea-4a72-bc46-82b22a1b30b3">
+        <cim:IdentifiedObject.name>Section②_접속점1~접속점2</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>adbcf717-6f79-436c-9d9c-5dc3f73f8548</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.8</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.1536</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.2888</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.4608</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.8664</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:2f006836-e672-4e12-823e-4b8d8b56f71d">
+        <cim:IdentifiedObject.name>CN_접속점1_고압A</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>76147872-0fa1-4e60-8819-12a330753924</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:fba81e47-1915-47ae-b4b8-83481048a9ba">
+    <cim:IdentifiedObject.mRID>c915817c-4917-40e2-8311-2d49acc7fe1b</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:BusbarSection rdf:about="urn:uuid:09b051a7-d7e8-490f-b19a-51254a939d5f">
+        <cim:IdentifiedObject.name>BS_변전소22kV모선</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>f7bf3b16-f11b-4b9b-a217-043117323a6b</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:BusbarSection>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:550fef70-dfd9-4035-b0cc-413aadef1588">
+        <cim:IdentifiedObject.name>CN_변전소모선</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>c16e1bb6-9887-4c74-bd25-4a25dce9ca78</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:9a02b1d8-df7c-4595-b6c8-d28509b6afc1">
+    <cim:IdentifiedObject.mRID>c64ec979-dff2-45c6-ad54-e863780c3cbb</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:EnergyConsumer rdf:about="urn:uuid:aec745b2-1921-4529-871a-84fdbb74b364">
+        <cim:IdentifiedObject.name>부하_좌좌</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>cc1f7ecd-b59c-40a7-974d-bc18f95e26d5</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:EnergyConsumer.p rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1800000.0</cim:EnergyConsumer.p>
+        <cim:EnergyConsumer.q rdf:datatype="http://www.w3.org/2001/XMLSchema#float">591631.0</cim:EnergyConsumer.q>
+        <cim:EnergyConsumer.pfixed rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1800000.0</cim:EnergyConsumer.pfixed>
+      </cim:EnergyConsumer>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:be17094c-b52b-43ca-91f1-8ff9a2e7223a">
+        <cim:IdentifiedObject.name>CN_좌좌말단</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>b6111c1a-5b0c-4815-835f-578d6821e7ce</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:bd852002-bd1b-4ddc-be41-e75557f0e093">
+    <cim:IdentifiedObject.mRID>4fb7901d-0163-41fa-9310-56bda0c3f1b3</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:SolarGeneratingUnit rdf:about="urn:uuid:f27fb1cc-8511-4623-b46f-ce84fc052db1">
+        <cim:IdentifiedObject.name>PV1_좌측1</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>ad0c30e7-7a37-4871-bde2-572d0c11582d</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:GeneratingUnit.nominalP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1000000.0</cim:GeneratingUnit.nominalP>
+        <cim:GeneratingUnit.maxOperatingP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1000000.0</cim:GeneratingUnit.maxOperatingP>
+        <cim:GeneratingUnit.minOperatingP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.0</cim:GeneratingUnit.minOperatingP>
+      </cim:SolarGeneratingUnit>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:598c8611-71a2-453f-9879-bead88f778f7"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:9c8d52ff-e689-42bc-b253-4a2a524d3f95">
+    <cim:IdentifiedObject.mRID>095d07b2-301a-4643-acde-4ec2fdcf8671</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:EnergyConsumer rdf:about="urn:uuid:02f9efd2-4021-4c7b-8283-7b205f2d4bfb">
+        <cim:IdentifiedObject.name>고압고객A</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>a47418e5-f8b1-42db-a993-5b4382326de8</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:EnergyConsumer.p rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1500000.0</cim:EnergyConsumer.p>
+        <cim:EnergyConsumer.q rdf:datatype="http://www.w3.org/2001/XMLSchema#float">493026.0</cim:EnergyConsumer.q>
+        <cim:EnergyConsumer.pfixed rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1500000.0</cim:EnergyConsumer.pfixed>
+      </cim:EnergyConsumer>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:2f006836-e672-4e12-823e-4b8d8b56f71d"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:aca5bc28-92e1-44c0-a814-adfd45f97c71">
+    <cim:IdentifiedObject.mRID>d0d6e674-ab6c-4a71-a814-713c3668b88c</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:EnergyConsumer rdf:about="urn:uuid:8abc6747-5617-4cd4-9fd5-77723ff2d9ee">
+        <cim:IdentifiedObject.name>고압고객B</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>42524d44-7a54-4ece-91b7-2d821358254b</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:EnergyConsumer.p rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2000000.0</cim:EnergyConsumer.p>
+        <cim:EnergyConsumer.q rdf:datatype="http://www.w3.org/2001/XMLSchema#float">657368.0</cim:EnergyConsumer.q>
+        <cim:EnergyConsumer.pfixed rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2000000.0</cim:EnergyConsumer.pfixed>
+      </cim:EnergyConsumer>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:76c8b359-5747-4b60-a7da-d4ad96be5304">
+        <cim:IdentifiedObject.name>CN_접속점2_고압B</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>ca355d66-4d0c-42dd-99f7-e900c3ef1d34</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:f01281fe-3f50-4eb3-9be2-b1867d6ec946">
+    <cim:IdentifiedObject.mRID>fb08d34a-aa23-4090-84fc-c022b858ed65</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:ca3494c6-5af7-4022-83ba-3872033fa4f9">
+        <cim:IdentifiedObject.name>Section⑨_우측1~BP2R</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>93471614-c9ee-47e8-9748-6bb00f05c23c</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.0</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.32</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.38</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.96</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.14</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:8cd6c33a-3e2c-4f5a-9d3c-6019b069dab6">
+        <cim:IdentifiedObject.name>CN_BranchPoint2R</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>893fe720-c173-4e88-aa9f-2213679ea521</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:b07af538-a2f6-4f33-b797-7b8a8513a45c">
+    <cim:IdentifiedObject.mRID>bb07902a-3f2e-4e3c-9537-9d07584fadc2</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:56098e9b-4b0c-4340-94fa-7028567e4618">
+        <cim:IdentifiedObject.name>Section⑦_BP2L~좌좌말단</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>dbf887e5-c40a-4476-97ce-35605e60fad8</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.8</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.256</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.304</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.768</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.912</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:be17094c-b52b-43ca-91f1-8ff9a2e7223a"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:489880f6-1aca-429f-84b7-7aacbc3c39ef">
+    <cim:IdentifiedObject.mRID>a950224e-5228-4bac-b8cc-caeb26dbf211</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:24cb1826-e80a-44c2-9363-330f4d6ab3c2"/>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:6ca4b952-ab1d-4530-ab20-f55d7acedc21">
+        <cim:IdentifiedObject.name>CN_BranchPoint2L</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>1657df06-94b6-4d17-8292-0572e33d6bfc</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:250e7107-5ffd-45b7-bd45-41dd638db8f1">
+    <cim:IdentifiedObject.mRID>69f63148-bc52-4b7e-aaa9-5b549897ab05</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:482fcde9-82f1-4fbc-932b-51ad2bae1440">
+        <cim:IdentifiedObject.name>Section③_접속점2~BP1</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>5cb182f6-7587-4b88-80fc-0b1ccd838a17</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.2</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.2304</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.4332</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.6912</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.2996</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:cabf91d3-4870-4cf1-ad43-a59e78677677">
+        <cim:IdentifiedObject.name>CN_BranchPoint1</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>8f81e79e-0b3e-4101-8ac6-4e462333f93b</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:5a49efbe-d395-4fae-93ee-02effb9d6862">
+    <cim:IdentifiedObject.mRID>ebffa89b-0a8a-496f-8b61-57295ea966a9</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:Breaker rdf:about="urn:uuid:4eed0bc0-4f5a-44ef-8da9-af5f636cf738">
+        <cim:IdentifiedObject.name>CB_변전소출구</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>17de718c-1551-4078-9653-429caa8a160b</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:f533cbdd-588f-48b3-9631-25423b484aad"/>
+        <cim:Switch.normalOpen rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">false</cim:Switch.normalOpen>
+        <cim:Switch.ratedCurrent rdf:datatype="http://www.w3.org/2001/XMLSchema#float">600.0</cim:Switch.ratedCurrent>
+      </cim:Breaker>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:550fef70-dfd9-4035-b0cc-413aadef1588"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:89a45653-377d-4019-9c09-84449439f03d">
+    <cim:IdentifiedObject.mRID>8183fe42-51a8-41fc-b99c-0394a244bf2c</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:EnergyConsumer rdf:about="urn:uuid:d97a5788-665a-471a-85a8-527ae465d168">
+        <cim:IdentifiedObject.name>고압고객C</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>37e669b4-e23a-4fbd-b968-3f9292b1cfb8</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:EnergyConsumer.p rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1200000.0</cim:EnergyConsumer.p>
+        <cim:EnergyConsumer.q rdf:datatype="http://www.w3.org/2001/XMLSchema#float">394421.0</cim:EnergyConsumer.q>
+        <cim:EnergyConsumer.pfixed rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1200000.0</cim:EnergyConsumer.pfixed>
+      </cim:EnergyConsumer>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:598c8611-71a2-453f-9879-bead88f778f7"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:611338a3-573b-41d2-9825-52c24c71095e">
+    <cim:IdentifiedObject.mRID>e334bce7-402b-4da9-a535-6fa4f452569d</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:ca3494c6-5af7-4022-83ba-3872033fa4f9"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:d2d9dc62-d6c2-4300-ab7d-31ba5c373f64"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:8ec74c95-eea4-4a5d-89db-693ee3f6e242">
+    <cim:IdentifiedObject.mRID>03f41fea-7e66-48e8-95d4-ff1a06ecdf39</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:0d75736d-6c3a-4a91-9e80-e64c4a8d366f">
+        <cim:IdentifiedObject.name>Section④_BP1~좌측1</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>dfa4a29e-0c56-4159-8c67-be16b6c18757</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.5</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.48</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.57</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.44</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.71</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:cabf91d3-4870-4cf1-ad43-a59e78677677"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:809542c1-6353-4583-a512-4943d73f12e4">
+    <cim:IdentifiedObject.mRID>a619dafa-7ed7-4f53-9091-88869f8b24b8</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:SolarGeneratingUnit rdf:about="urn:uuid:57dc4d52-8546-402b-88f5-2672df496de8">
+        <cim:IdentifiedObject.name>PV3_우측1</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>1cd39056-8984-4334-bd9d-ebe20f0739b1</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:GeneratingUnit.nominalP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1500000.0</cim:GeneratingUnit.nominalP>
+        <cim:GeneratingUnit.maxOperatingP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1500000.0</cim:GeneratingUnit.maxOperatingP>
+        <cim:GeneratingUnit.minOperatingP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.0</cim:GeneratingUnit.minOperatingP>
+      </cim:SolarGeneratingUnit>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:d2d9dc62-d6c2-4300-ab7d-31ba5c373f64"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:f7282453-141d-41db-9da8-745d0303a146">
+    <cim:IdentifiedObject.mRID>ab9811bb-48f6-4d41-b06b-ec1f84cfaba4</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:EnergyConsumer rdf:about="urn:uuid:2f073380-3f7a-40f3-9638-c726df7f34c6">
+        <cim:IdentifiedObject.name>부하_우좌</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>5226cd47-7f65-4120-90e5-7a1c0eb3de37</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:EnergyConsumer.p rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2000000.0</cim:EnergyConsumer.p>
+        <cim:EnergyConsumer.q rdf:datatype="http://www.w3.org/2001/XMLSchema#float">657368.0</cim:EnergyConsumer.q>
+        <cim:EnergyConsumer.pfixed rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2000000.0</cim:EnergyConsumer.pfixed>
+      </cim:EnergyConsumer>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:1d2890b4-bb10-4d82-98e9-ec6256d74ebc">
+        <cim:IdentifiedObject.name>CN_우좌말단</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>b713af2d-f0d5-4e1f-a1b2-1e6f8c9bedd8</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:816e9f88-eb86-4d24-aac6-fe38b485cfdd">
+    <cim:IdentifiedObject.mRID>cd77f40b-f3c7-4a3e-9c78-8d979ece1309</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:56098e9b-4b0c-4340-94fa-7028567e4618"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:6ca4b952-ab1d-4530-ab20-f55d7acedc21"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:64d9ba76-5a67-4410-a7a5-604506ac6fd8">
+    <cim:IdentifiedObject.mRID>4bf8ffdf-c277-4d38-834c-2bf79fc0c3e4</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:45fa26b2-928b-4b2e-b3ff-c66f4bba37b6">
+        <cim:IdentifiedObject.name>Section⑩_BP2R~우좌말단</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>529b5977-1d42-4250-be28-61c0a2d94697</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.8</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.256</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.304</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.768</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.912</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:1d2890b4-bb10-4d82-98e9-ec6256d74ebc"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:ffb88718-f660-40c9-9c13-a9f2755858d7">
+    <cim:IdentifiedObject.mRID>2d505a48-55ab-4374-a05f-6e7a42dfd00b</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:0d75736d-6c3a-4a91-9e80-e64c4a8d366f"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:598c8611-71a2-453f-9879-bead88f778f7"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:41d67958-8e47-477e-8dcf-c80b8ecd31c9">
+    <cim:IdentifiedObject.mRID>a7ea40f4-9b94-4f33-8f2a-e5b30c207f3a</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:c9545aca-89ea-4a72-bc46-82b22a1b30b3"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:76c8b359-5747-4b60-a7da-d4ad96be5304"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:581a9c5b-6670-42db-b080-3610cfa3fc0d">
+    <cim:IdentifiedObject.mRID>ca240d4c-6cca-4ce8-af02-f7d1340823d8</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:7ae94d90-4acf-4497-9a86-a41bcc9ed1aa">
+        <cim:IdentifiedObject.name>Section⑤_BP1~우측1</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>1a441b91-77ee-4b8a-948f-1239cc8c0194</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.5</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.48</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.57</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.44</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.71</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:d2d9dc62-d6c2-4300-ab7d-31ba5c373f64"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:0d7c0bfa-d13d-4e1e-9492-fd923441584a">
+    <cim:IdentifiedObject.mRID>85166feb-c4f8-4771-aa74-aa68fdbd0384</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:19860cb7-183a-4960-a97d-a0de953fa15e">
+        <cim:IdentifiedObject.name>Section①_CB출구~접속점1</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>84fc7df0-9366-4125-8890-c7b977c61fe8</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.5</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.096</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.1805</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.288</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.5415</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:d65caf4a-88a6-4a36-8fb1-864d992a2b40">
+        <cim:IdentifiedObject.name>CN_CB출력</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>5e46453b-2464-4f44-a64c-eba83713524f</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:6b4fefbe-3b1b-483d-aa36-c31599b314d4">
+    <cim:IdentifiedObject.mRID>cf865d2d-982e-4756-a7ed-5524b0909d81</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:ACLineSegment rdf:about="urn:uuid:f91fee61-4c99-479c-a45e-054d52743ec9">
+        <cim:IdentifiedObject.name>Section⑪_BP2R~우우말단</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>cf3c6190-2580-4cd7-a15c-f8999c2823ef</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:Conductor.length rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.8</cim:Conductor.length>
+        <cim:ACLineSegment.r rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.256</cim:ACLineSegment.r>
+        <cim:ACLineSegment.x rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.304</cim:ACLineSegment.x>
+        <cim:ACLineSegment.r0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.768</cim:ACLineSegment.r0>
+        <cim:ACLineSegment.x0 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.912</cim:ACLineSegment.x0>
+      </cim:ACLineSegment>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode>
+      <cim:ConnectivityNode rdf:about="urn:uuid:2f0ec715-8813-4421-82e0-a50399e449b1">
+        <cim:IdentifiedObject.name>CN_우우말단_PV4</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>d693f6f3-4b68-48ff-9c9a-0c9a150eb54b</cim:IdentifiedObject.mRID>
+        <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+      </cim:ConnectivityNode>
+    </cim:Terminal.ConnectivityNode>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:eb69d953-14e6-4105-8c6e-b6d439b562ad">
+    <cim:IdentifiedObject.mRID>5e056f9e-ecd6-4df7-9338-ad203e1cd1ce</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:EnergyConsumer rdf:about="urn:uuid:c2cefc77-d638-4ae1-b33e-f4efac0f9226">
+        <cim:IdentifiedObject.name>부하_좌우</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>4171e08a-5713-4a77-ad38-9a41876d3799</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:EnergyConsumer.p rdf:datatype="http://www.w3.org/2001/XMLSchema#float">900000.0</cim:EnergyConsumer.p>
+        <cim:EnergyConsumer.q rdf:datatype="http://www.w3.org/2001/XMLSchema#float">295816.0</cim:EnergyConsumer.q>
+        <cim:EnergyConsumer.pfixed rdf:datatype="http://www.w3.org/2001/XMLSchema#float">900000.0</cim:EnergyConsumer.pfixed>
+      </cim:EnergyConsumer>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:687617ce-cacf-4d5f-9933-23088f6a304f"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:35458597-8b58-4d0e-80d3-ceebc9d45471">
+    <cim:IdentifiedObject.mRID>e2cfc3ee-9346-4dde-a0df-9f71bed0c832</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:45fa26b2-928b-4b2e-b3ff-c66f4bba37b6"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:8cd6c33a-3e2c-4f5a-9d3c-6019b069dab6"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:2dca1681-a099-42e0-8327-4683e1e8639f">
+    <cim:IdentifiedObject.mRID>0b8ec12a-4fa3-417f-92fc-eff4298997c9</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:EnergyConsumer rdf:about="urn:uuid:37ab32b9-6ee5-41fc-9b1b-830e77d581d0">
+        <cim:IdentifiedObject.name>부하_우우</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>1b8d47c7-c561-4b68-a3f8-db26c43d10ea</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:EnergyConsumer.p rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1300000.0</cim:EnergyConsumer.p>
+        <cim:EnergyConsumer.q rdf:datatype="http://www.w3.org/2001/XMLSchema#float">427289.0</cim:EnergyConsumer.q>
+        <cim:EnergyConsumer.pfixed rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1300000.0</cim:EnergyConsumer.pfixed>
+      </cim:EnergyConsumer>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:2f0ec715-8813-4421-82e0-a50399e449b1"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:5f027c2e-02f8-4b2d-b341-3d0b13815fe7">
+    <cim:IdentifiedObject.mRID>f98b8d63-62da-4131-807c-ba41df796a91</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:09ca3d51-199a-48e7-bb44-b1d527977197"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:6ca4b952-ab1d-4530-ab20-f55d7acedc21"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:f9aed4a2-b385-4bc0-ac51-ac702edaed3c">
+    <cim:IdentifiedObject.mRID>aff14ab8-6765-4a21-a26d-09e6219c071d</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:4eed0bc0-4f5a-44ef-8da9-af5f636cf738"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:d65caf4a-88a6-4a36-8fb1-864d992a2b40"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:f06ec679-d8be-45e9-905a-732c88fb1e05">
+    <cim:IdentifiedObject.mRID>b34201da-414f-479f-9ab7-9e83e752d914</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:482fcde9-82f1-4fbc-932b-51ad2bae1440"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:76c8b359-5747-4b60-a7da-d4ad96be5304"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:e685c450-a04d-434e-a36d-c7424f6c24a2">
+    <cim:IdentifiedObject.mRID>27b3b6e5-a3b5-4429-94f5-7ff4dc23d603</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:SolarGeneratingUnit rdf:about="urn:uuid:acd2683a-1f73-4554-9ae9-ac346d2e1d72">
+        <cim:IdentifiedObject.name>PV4_우우말단</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>cd64cc00-525d-4f27-ac61-f62d1f57d28f</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:GeneratingUnit.nominalP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">500000.0</cim:GeneratingUnit.nominalP>
+        <cim:GeneratingUnit.maxOperatingP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">500000.0</cim:GeneratingUnit.maxOperatingP>
+        <cim:GeneratingUnit.minOperatingP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.0</cim:GeneratingUnit.minOperatingP>
+      </cim:SolarGeneratingUnit>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:2f0ec715-8813-4421-82e0-a50399e449b1"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:b306c9de-5166-433b-ab32-d9835245569a">
+    <cim:IdentifiedObject.mRID>3ef5ade2-4acc-44a2-ac39-a62d539adc95</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:19860cb7-183a-4960-a97d-a0de953fa15e"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:2f006836-e672-4e12-823e-4b8d8b56f71d"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">2</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:2eeae4a9-fcea-4ea7-b36a-4e67221012cb">
+    <cim:IdentifiedObject.mRID>d5a37f92-ed38-4ea5-910d-bc07678ee5bf</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment>
+      <cim:SolarGeneratingUnit rdf:about="urn:uuid:5377425d-1cbc-45a6-8870-a3c30138b3e6">
+        <cim:IdentifiedObject.name>PV2_좌우말단</cim:IdentifiedObject.name>
+        <cim:IdentifiedObject.mRID>0b17d497-53d1-4dd6-b9dd-e3eed037e35e</cim:IdentifiedObject.mRID>
+        <cim:Equipment.EquipmentContainer rdf:resource="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858"/>
+        <cim:GeneratingUnit.nominalP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2000000.0</cim:GeneratingUnit.nominalP>
+        <cim:GeneratingUnit.maxOperatingP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2000000.0</cim:GeneratingUnit.maxOperatingP>
+        <cim:GeneratingUnit.minOperatingP rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.0</cim:GeneratingUnit.minOperatingP>
+      </cim:SolarGeneratingUnit>
+    </cim:Terminal.ConductingEquipment>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:687617ce-cacf-4d5f-9933-23088f6a304f"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:035e8f27-23de-47bf-b089-1a68020e7691">
+    <cim:IdentifiedObject.mRID>4fcbcb5f-3343-4fc2-b615-737596d61a8f</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:f91fee61-4c99-479c-a45e-054d52743ec9"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:8cd6c33a-3e2c-4f5a-9d3c-6019b069dab6"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Terminal rdf:about="urn:uuid:24c7936b-399d-4605-b1d3-615e82cbe38d">
+    <cim:IdentifiedObject.mRID>8fec111b-59ca-4246-8ba8-2f4325c0caf3</cim:IdentifiedObject.mRID>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:7ae94d90-4acf-4497-9a86-a41bcc9ed1aa"/>
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:cabf91d3-4870-4cf1-ad43-a59e78677677"/>
+    <cim:ACDCTerminal.sequenceNumber rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</cim:ACDCTerminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:Substation rdf:about="urn:uuid:f533cbdd-588f-48b3-9631-25423b484aad">
+    <cim:IdentifiedObject.name>변전소</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.mRID>fec8e04e-d121-49e6-b568-3a34533a1729</cim:IdentifiedObject.mRID>
+  </cim:Substation>
+  <cim:VoltageLevel rdf:about="urn:uuid:8260fdd1-06a0-4125-ab72-958d4b5b1858">
+    <cim:IdentifiedObject.name>22.9kV_배전레벨</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.mRID>d782db74-1929-43e7-afcc-6d595686d217</cim:IdentifiedObject.mRID>
+    <cim:VoltageLevel.Substation rdf:resource="urn:uuid:f533cbdd-588f-48b3-9631-25423b484aad"/>
+    <cim:VoltageLevel.BaseVoltage rdf:datatype="http://www.w3.org/2001/XMLSchema#float">22900.0</cim:VoltageLevel.BaseVoltage>
+  </cim:VoltageLevel>
+</rdf:RDF>

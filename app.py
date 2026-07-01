@@ -179,9 +179,9 @@ def sim_reverse():
 
 @app.route("/api/sim/fault")
 def sim_fault():
-    _build_and_solve(pv_irradiance=0.0, mode="faultstudy")
-    dss.run_command("Set mode=faultstudy")
-    dss.run_command("Solve")
+    converged, *_ = _build_and_solve(pv_irradiance=0.0, mode="faultstudy")
+    if not converged:
+        return jsonify({"error": "수렴 실패"}), 500
     result = {}
     for bname in dss.Circuit.AllBusNames():
         dss.Circuit.SetActiveBus(bname)
@@ -194,7 +194,7 @@ def sim_fault():
                              "status": "high" if i3ph>5000 else ("medium" if i3ph>1000 else "low")}
         except Exception:
             result[bname] = {"isc3_a":0, "isc3_ka":0, "mva":0, "status":"low"}
-    return jsonify({"converged": True, "buses": result, "feeders": _get_feeder_loads()})
+    return jsonify({"converged": converged, "buses": result, "feeders": _get_feeder_loads()})
 
 
 @app.route("/api/graph/save", methods=["POST"])

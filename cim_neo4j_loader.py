@@ -2,21 +2,18 @@
 Korean 22.9kV Distribution Network — Neo4j CIM Loader
 CIM 기반 배전 전력망을 Neo4j 그래프 DB에 로드
 
-Neo4j Desktop 접속 정보를 아래에서 수정하세요.
+Neo4j 접속 정보는 network_model.py 참고 (NEO4J_URI/USER/PASSWORD 환경변수로 설정 가능).
 """
 
 import uuid as _uuid
 
 from neo4j import GraphDatabase
 
+from network_model import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+
 
 def new_uuid():
     return str(_uuid.uuid4())
-
-# ── 접속 설정 ─────────────────────────────────────────────
-NEO4J_URI      = "bolt://localhost:7687"
-NEO4J_USER     = "neo4j"
-NEO4J_PASSWORD = "password"
 
 # ── 네트워크 데이터 정의 ──────────────────────────────────
 SUBSTATION = {"name": "변전소", "voltage_kv": 22.9, "source_kv": 154.0}

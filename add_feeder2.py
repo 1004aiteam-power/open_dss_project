@@ -6,9 +6,7 @@
 import uuid as _uuid
 from neo4j import GraphDatabase
 
-NEO4J_URI      = "bolt://localhost:7687"
-NEO4J_USER     = "neo4j"
-NEO4J_PASSWORD = "password"
+from network_model import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
 def new_uuid():
     return str(_uuid.uuid4())

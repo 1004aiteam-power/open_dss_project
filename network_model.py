@@ -1,11 +1,15 @@
 """
 Neo4j CIM 그래프 조회 + OpenDSS 스크립트 생성 공통 모듈
-app.py, run_opendss.py 에서 공유
-"""
+app.py, run_opendss.py, cim_neo4j_loader.py, add_feeder2.py 에서 공유
 
-NEO4J_URI      = "bolt://localhost:7687"
-NEO4J_USER     = "neo4j"
-NEO4J_PASSWORD = "password"
+Neo4j 접속 정보는 환경변수로 설정한다 (미설정 시 로컬 기본값 사용):
+  NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+"""
+import os
+
+NEO4J_URI      = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+NEO4J_USER     = os.environ.get("NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "password")
 
 AMPACITY = {160: 400, 95: 310, 60: 240}          # ACSR mm² → 정격전류 A
 MM2_TO_LINECODE = {160: "ACSR160", 95: "ACSR95", 60: "ACSR60"}

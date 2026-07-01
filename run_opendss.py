@@ -6,139 +6,17 @@ import opendssdirect as dss
 from neo4j import GraphDatabase
 from pathlib import Path
 
-NEO4J_URI  = "bolt://localhost:7687"
-NEO4J_USER = "neo4j"
-NEO4J_PASS = "password"
+from network_model import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, fetch_network, build_dss_script
 
 OUT_DIR = Path(__file__).parent / "dss_output"
 OUT_DIR.mkdir(exist_ok=True)
 
-# ── 1. Neo4j에서 데이터 조회 ─────────────────────────────────
 
-def fetch_network():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASS))
-    with driver.session() as s:
-        # 변전소
-        sub = s.run("MATCH (n:Substation) RETURN n.name AS name, n.voltage_kv AS kv").single()
+# ── DSS 스크립트 생성 및 저장 ──────────────────────────────────
 
-        # ConnectivityNode (버스)
-        buses = s.run("MATCH (n:ConnectivityNode) RETURN n.name AS name").data()
-
-        # ACLineSegment + 연결된 CN 두 개
-        lines = s.run("""
-            MATCH (cn1:ConnectivityNode)-[:CONNECTS]->(seg:ACLineSegment)-[:CONNECTS]->(cn2:ConnectivityNode)
-            RETURN seg.name      AS name,
-                   seg.length_km AS length_km,
-                   seg.r_ohm     AS r_ohm,
-                   seg.x_ohm     AS x_ohm,
-                   seg.conductor_mm2 AS mm2,
-                   cn1.name      AS from_bus,
-                   cn2.name      AS to_bus
-        """).data()
-
-        # 부하
-        loads = s.run("""
-            MATCH (ec:EnergyConsumer)-[:CONNECTED_AT]->(cn:ConnectivityNode)
-            RETURN ec.name AS name, ec.p_mw AS p_mw, ec.q_mvar AS q_mvar, cn.name AS bus
-        """).data()
-
-        # PV
-        pvs = s.run("""
-            MATCH (gu:SolarUnit)-[:CONNECTED_AT]->(cn:ConnectivityNode)
-            RETURN gu.name AS name, gu.rated_mw AS rated_mw, cn.name AS bus
-        """).data()
-
-        # CB (Breaker) — TERMINAL 관계로 from/to 파악
-        cbs = s.run("""
-            MATCH (cb:Breaker)-[t:TERMINAL]->(cn:ConnectivityNode)
-            WITH cb, t.seq AS seq, cn.name AS cn_name
-            ORDER BY cb.name, seq
-            WITH cb.name AS name, collect(cn_name) AS cns
-            RETURN name, cns[0] AS from_bus, cns[1] AS to_bus
-        """).data()
-
-    driver.close()
-    return sub, buses, lines, loads, pvs, cbs
-
-
-# ── 2. DSS 스크립트 생성 ──────────────────────────────────────
-
-def build_dss(sub, buses, lines, loads, pvs, cbs):
-    kv     = sub["kv"]       # 22.9
-    kv_ll  = kv              # 선간전압
-
-    script_lines = []
-    w = script_lines.append
-
-    w(f"! ── 22.9kV 배전망 OpenDSS 모델 ──")
-    w(f"Clear")
-    w(f"New Circuit.KoreanDist22kV basekv={kv_ll} pu=1.0 angle=0 frequency=60 phases=3")
-    w(f"~ bus1=CN_변전소모선")
-    w(f"~ Isc3=10000  Isc1=10000  ! 무한 버스 (변전소)")
-    w("")
-
-    # 기본 전선 코드 정의 (mm²별)
-    w("! ── 전선 코드 ──")
-    w("New Linecode.ACSR160 nphases=3 r1=0.192 x1=0.361 r0=0.192 x0=0.361 units=km")
-    w("New Linecode.ACSR95  nphases=3 r1=0.320 x1=0.380 r0=0.320 x0=0.380 units=km")
-    w("New Linecode.ACSR60  nphases=3 r1=0.507 x1=0.395 r0=0.507 x0=0.395 units=km")
-    w("")
-
-    mm2_to_code = {160: "ACSR160", 95: "ACSR95", 60: "ACSR60"}
-
-    # CB → OpenDSS Line (switch)
-    w("! ── 차단기 (Switch) ──")
-    for cb in cbs:
-        safe = cb["name"].replace(" ", "_")
-        w(f'New Line.{safe} bus1="{cb["from_bus"]}" bus2="{cb["to_bus"]}" '
-          f'switch=true length=0.001 linecode=ACSR160')
-    w("")
-
-    # ACLineSegment → OpenDSS Line
-    w("! ── 선로 구간 ──")
-    for ln in lines:
-        safe = ln["name"].replace(" ", "_")
-        code = mm2_to_code.get(ln["mm2"], "ACSR95")
-        w(f'New Line.{safe} bus1="{ln["from_bus"]}" bus2="{ln["to_bus"]}" '
-          f'linecode={code} length={ln["length_km"]} units=km')
-    w("")
-
-    # EnergyConsumer → OpenDSS Load
-    w("! ── 부하 ──")
-    for ld in loads:
-        safe = ld["name"].replace(" ", "_")
-        kw   = ld["p_mw"] * 1000
-        kvar = ld["q_mvar"] * 1000
-        w(f'New Load.{safe} bus1="{ld["bus"]}" kv={kv_ll} kw={kw:.1f} kvar={kvar:.1f} '
-          f'phases=3 model=1 conn=wye')
-    w("")
-
-    # SolarUnit → OpenDSS PVSystem
-    w("! ── 태양광 PV (50% 출력) ──")
-    for pv in pvs:
-        safe  = pv["name"].replace(" ", "_")
-        kva   = pv["rated_mw"] * 1000
-        kw    = kva * 0.5          # 50% irradiance
-        w(f'New PVSystem.{safe} bus1="{pv["bus"]}" kv={kv_ll} kva={kva:.0f} '
-          f'pmpp={kw:.0f} irradiance=0.5 phases=3 conn=wye')
-    w("")
-
-    # 해석 설정
-    w("! ── 해석 설정 ──")
-    w("Set Voltagebases=[22.9]")
-    w("CalcVoltageBases")
-    w("Set algorithm=Newton")
-    w("Set maxiter=100")
-    w("Set tolerance=0.0001")
-    w("")
-    w("Solve mode=snapshot")
-    w("")
-    w("! 결과 저장")
-    w(f'Export Voltages "{OUT_DIR}/voltages.csv"')
-    w(f'Export Losses   "{OUT_DIR}/losses.csv"')
-    w(f'Export Powers   "{OUT_DIR}/powers.csv"')
-
-    script = "\n".join(script_lines)
+def build_dss(sub, lines, loads, pvs, cbs):
+    script = build_dss_script(sub, lines, loads, pvs, cbs,
+                               pv_irradiance=0.5, mode="snapshot", export_dir=OUT_DIR)
     dss_file = OUT_DIR / "korean_dist.dss"
     dss_file.write_text(script, encoding="utf-8")
     print(f"[DSS] 스크립트 저장: {dss_file}")
@@ -228,8 +106,12 @@ def run_and_report(dss_file):
 
 if __name__ == "__main__":
     print("Neo4j에서 네트워크 데이터 조회 중...")
-    sub, buses, lines, loads, pvs, cbs = fetch_network()
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    try:
+        sub, buses, lines, loads, pvs, cbs = fetch_network(driver)
+    finally:
+        driver.close()
     print(f"  버스 {len(buses)}개, 선로 {len(lines)}개, 부하 {len(loads)}개, PV {len(pvs)}개, CB {len(cbs)}개")
 
-    dss_file = build_dss(sub, buses, lines, loads, pvs, cbs)
+    dss_file = build_dss(sub, lines, loads, pvs, cbs)
     run_and_report(dss_file)

@@ -7,15 +7,14 @@ from pathlib import Path
 import opendssdirect as dss
 import tempfile, os
 
+from network_model import (
+    NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, AMPACITY,
+    fetch_network, build_dss_script,
+)
+
 app = Flask(__name__)
 
-NEO4J_URI      = "bolt://localhost:7687"
-NEO4J_USER     = "neo4j"
-NEO4J_PASSWORD = "password"
-
 driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-
-AMPACITY = {160: 400, 95: 310, 60: 240}   # ACSR mm² → 정격전류 A
 
 _graph_cache = None  # 그래프 데이터 메모리 캐시
 
@@ -49,74 +48,10 @@ def query_graph():
 
 # ── OpenDSS 공통 헬퍼 ─────────────────────────────────────────
 
-def _fetch_network():
-    with driver.session() as s:
-        sub   = s.run("MATCH (n:Substation) RETURN n.name AS name, n.voltage_kv AS kv").single()
-        buses = s.run("MATCH (n:ConnectivityNode) RETURN n.name AS name").data()
-        lines = s.run("""
-            MATCH (cn1:ConnectivityNode)-[:CONNECTS]->(seg:ACLineSegment)-[:CONNECTS]->(cn2:ConnectivityNode)
-            RETURN seg.name AS name, seg.length_km AS length_km,
-                   seg.r_ohm AS r_ohm, seg.x_ohm AS x_ohm,
-                   seg.conductor_mm2 AS mm2, cn1.name AS from_bus, cn2.name AS to_bus
-        """).data()
-        loads = s.run("""
-            MATCH (ec:EnergyConsumer)-[:CONNECTED_AT]->(cn:ConnectivityNode)
-            RETURN ec.name AS name, ec.p_mw AS p_mw, ec.q_mvar AS q_mvar, cn.name AS bus
-        """).data()
-        pvs = s.run("""
-            MATCH (gu:SolarUnit)-[:CONNECTED_AT]->(cn:ConnectivityNode)
-            RETURN gu.name AS name, gu.rated_mw AS rated_mw, cn.name AS bus
-        """).data()
-        cbs = s.run("""
-            MATCH (cb:Breaker)-[t:TERMINAL]->(cn:ConnectivityNode)
-            WITH cb, t.seq AS seq, cn.name AS cn_name
-            ORDER BY cb.name, seq
-            WITH cb.name AS name, collect(cn_name) AS cns
-            RETURN name, cns[0] AS from_bus, cns[1] AS to_bus
-        """).data()
-    return sub, buses, lines, loads, pvs, cbs
-
-
 def _build_and_solve(pv_irradiance=0.5, mode="snapshot"):
-    sub, buses, lines, loads, pvs, cbs = _fetch_network()
-    kv = sub["kv"]
-    mm2_to_code = {160: "ACSR160", 95: "ACSR95", 60: "ACSR60"}
+    sub, buses, lines, loads, pvs, cbs = fetch_network(driver)
+    script = build_dss_script(sub, lines, loads, pvs, cbs, pv_irradiance=pv_irradiance, mode=mode)
 
-    sc = []
-    w  = sc.append
-    w(f"Clear")
-    w(f"New Circuit.KorDist basekv={kv} pu=1.0 angle=0 frequency=60 phases=3")
-    w(f"~ bus1=CN_변전소모선 Isc3=10000 Isc1=10000")
-    w("New Linecode.ACSR160 nphases=3 r1=0.192 x1=0.361 r0=0.192 x0=0.361 units=km")
-    w("New Linecode.ACSR95  nphases=3 r1=0.320 x1=0.380 r0=0.320 x0=0.380 units=km")
-    w("New Linecode.ACSR60  nphases=3 r1=0.507 x1=0.395 r0=0.507 x0=0.395 units=km")
-
-    for cb in cbs:
-        safe = cb["name"].replace(" ", "_")
-        w(f'New Line.{safe} bus1="{cb["from_bus"]}" bus2="{cb["to_bus"]}" switch=true length=0.001 linecode=ACSR160')
-
-    for ln in lines:
-        safe = ln["name"].replace(" ", "_")
-        code = mm2_to_code.get(ln["mm2"], "ACSR95")
-        w(f'New Line.{safe} bus1="{ln["from_bus"]}" bus2="{ln["to_bus"]}" linecode={code} length={ln["length_km"]} units=km')
-
-    for ld in loads:
-        safe = ld["name"].replace(" ", "_")
-        w(f'New Load.{safe} bus1="{ld["bus"]}" kv={kv} kw={ld["p_mw"]*1000:.1f} kvar={ld["q_mvar"]*1000:.1f} phases=3 model=1 conn=wye')
-
-    for pv in pvs:
-        safe = pv["name"].replace(" ", "_")
-        kva  = pv["rated_mw"] * 1000
-        w(f'New PVSystem.{safe} bus1="{pv["bus"]}" kv={kv} kva={kva:.0f} pmpp={kva*pv_irradiance:.0f} irradiance={pv_irradiance} phases=3 conn=wye')
-
-    w("Set Voltagebases=[22.9]")
-    w("CalcVoltageBases")
-    w("Set algorithm=Newton")
-    w("Set maxiter=100")
-    w("Set tolerance=0.0001")
-    w(f"Solve mode={mode}")
-
-    script = "\n".join(sc)
     tmp = tempfile.NamedTemporaryFile(suffix=".dss", mode="w", delete=False, encoding="utf-8")
     tmp.write(script)
     tmp.close()

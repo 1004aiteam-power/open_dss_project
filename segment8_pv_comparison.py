@@ -6,12 +6,10 @@ import opendssdirect as dss
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import matplotlib.font_manager as fm
 
-_kor_fonts = [f.name for f in fm.fontManager.ttflist if "AppleGothic" in f.name or "NanumGothic" in f.name]
-if _kor_fonts:
-    plt.rcParams["font.family"] = _kor_fonts[0]
-plt.rcParams["axes.unicode_minus"] = False
+from plot_utils import set_korean_font
+
+set_korean_font()
 
 # ── 공통 회로 (PV2 제외) ──────────────────────────────────────────────────────
 

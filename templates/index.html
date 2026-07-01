@@ -3,179 +3,406 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>전력계통 Viewer — 22.9kV 배전망</title>
-<script src="https://d3js.org/d3.v7.min.js"></script>
+<title>전력계통 Viewer — 22.9kV 배전망 (Cytoscape.js Editor)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/konva/8.4.2/konva.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-grid-guide@2.3.0/cytoscape-grid-guide.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
     background: #0d1117;
     color: #c9d1d9;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
     overflow: hidden;
   }
 
   /* ── Header ── */
   #header {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    height: 52px;
+    height: 50px;
     background: #161b22;
     border-bottom: 1px solid #30363d;
-    display: flex; align-items: center; gap: 16px;
-    padding: 0 20px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 18px;
   }
-  #header h1 {
-    font-size: 15px; font-weight: 600;
-    color: #58a6ff;
-    letter-spacing: .5px;
-  }
-  #header .badge {
+  #header h1 { font-size: 14px; font-weight: 700; color: #58a6ff; }
+  .badge {
     font-size: 11px; padding: 2px 8px;
     background: #21262d; border: 1px solid #30363d;
-    border-radius: 12px; color: #8b949e;
+    border-radius: 10px; color: #8b949e;
   }
-  #stats {
-    margin-left: auto;
-    display: flex; gap: 16px;
-    font-size: 12px; color: #8b949e;
-  }
+  #stats { margin-left: auto; display: flex; gap: 14px; font-size: 12px; color: #8b949e; align-items: center; }
   #stats span b { color: #e6edf3; }
 
-  /* ── SVG canvas ── */
+  /* Mode Switch Buttons */
+  #mode-switch-wrap {
+    display: flex; gap: 6px;
+  }
+  .mode-btn {
+    padding: 5px 12px; font-size: 11px; font-weight: 600;
+    border-radius: 6px; cursor: pointer; border: 1px solid #30363d;
+    background: #21262d; color: #c9d1d9; transition: all 0.2s;
+  }
+  .mode-btn:hover { background: #2d333b; border-color: #8b949e; }
+  .mode-btn.active-viewer { background: #1f3d5c; border-color: #388bfd; color: #58a6ff; }
+  .mode-btn.active-edit { background: #4d1a1a; border-color: #f85149; color: #f85149;
+    animation: pulseBorder 1.5s infinite ease-in-out;
+  }
+  @keyframes pulseBorder {
+    0%   { border-color: #f85149; box-shadow: 0 0 2px rgba(248,81,73,0.3); }
+    50%  { border-color: #ff7b72; box-shadow: 0 0 8px rgba(248,81,73,0.6); }
+    100% { border-color: #f85149; box-shadow: 0 0 2px rgba(248,81,73,0.3); }
+  }
+
+  .edit-control-btn {
+    padding: 5px 12px; font-size: 11px; font-weight: 600;
+    border-radius: 6px; cursor: pointer; border: 1px solid #30363d;
+    color: #e6edf3;
+  }
+  .btn-save   { background: #1a4731; border-color: #238636; color: #2ea44f; }
+  .btn-save:hover { background: #238636; color: #fff; }
+  .btn-cancel { background: #21262d; border-color: #30363d; color: #8b949e; }
+  .btn-cancel:hover { background: #2d333b; color: #c9d1d9; }
+
+  /* ── Canvas ── */
   #canvas {
     position: fixed;
-    top: 52px; left: 0; right: 280px; bottom: 0;
-    background: #0d1117;
+    top: 50px; left: 0; right: 320px; bottom: 0;
+    background: #0b0e14;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    border: 2px solid transparent;
+    transition: border 0.3s;
   }
-  svg {
-    width: 100%; height: 100%;
+  #canvas.editing {
+    border: 2px dashed #f8514955;
+    animation: canvasEditBorder 3s infinite linear;
+  }
+  @keyframes canvasEditBorder {
+    0%   { border-color: #f8514922; }
+    50%  { border-color: #f8514977; }
+    100% { border-color: #f8514922; }
   }
 
-  /* ── Legend ── */
+  #cy {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Legend overlay (top-left) ── */
   #legend {
-    position: fixed;
-    top: 52px; right: 0;
-    width: 280px; bottom: 0;
-    background: #161b22;
-    border-left: 1px solid #30363d;
-    overflow-y: auto;
-    padding: 16px;
+    position: absolute;
+    top: 12px; left: 12px;
+    background: rgba(22, 27, 34, 0.88);
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    pointer-events: none;
   }
   #legend h3 {
-    font-size: 12px; text-transform: uppercase;
-    letter-spacing: 1px; color: #8b949e;
-    margin-bottom: 12px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    color: #8b949e; margin-bottom: 8px;
   }
   .legend-item {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 8px; font-size: 13px;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 5px; font-size: 11px; color: #c9d1d9;
   }
-  .legend-dot {
-    width: 14px; height: 14px; border-radius: 50%;
+  .legend-dot  { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .legend-rect { width: 18px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* Floating Editor Toolbar (Palette) */
+  #edit-palette {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: rgba(22, 27, 34, 0.94);
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 8px 10px;
+    z-index: 50;
+    display: flex; gap: 6px;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  #edit-palette h4 {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: #8b949e; display: flex; align-items: center; padding-right: 6px;
+    border-right: 1px solid #30363d; margin-right: 2px;
+  }
+  .palette-btn {
+    padding: 4px 8px; font-size: 10px; font-weight: 500;
+    background: #21262d; border: 1px solid #30363d;
+    color: #c9d1d9; border-radius: 4px; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+    transition: all 0.15s;
+  }
+  .palette-btn:hover { background: #2d333b; border-color: #8b949e; }
+  .palette-btn.active {
+    background: #1c3a5e; border-color: #58a6ff; color: #e6edf3;
+    box-shadow: 0 0 6px #388bfd55;
+  }
+  .palette-btn[data-tool="connect"].active {
+    background: #4d1a1a; border-color: #f85149; color: #ff7b72;
+    box-shadow: 0 0 6px #f8514955;
+  }
+
+  /* ── Right panel ── */
+  #right {
+    position: fixed;
+    top: 50px; right: 0;
+    width: 320px; bottom: 0;
+    background: #161b22;
+    border-left: 1px solid #30363d;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Simulation buttons */
+  #sim-panel {
+    padding: 14px 12px 10px;
+    border-bottom: 1px solid #21262d;
     flex-shrink: 0;
   }
-  .legend-rect {
-    width: 14px; height: 10px;
-    flex-shrink: 0; border-radius: 2px;
+  #sim-panel h3 {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    color: #8b949e; margin-bottom: 10px;
+  }
+  .sim-btn {
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 9px 12px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 9px;
+    transition: background .15s, border-color .15s;
+  }
+  .sim-btn:hover  { background: #2d333b; border-color: #58a6ff; }
+  .sim-btn.active { background: #1c3a5e; border-color: #388bfd; color: #e6edf3; }
+  .sim-btn.loading { opacity: .6; pointer-events: none; }
+  .sim-btn .icon  { font-size: 15px; flex-shrink: 0; }
+  .sim-btn .label { flex: 1; }
+  .sim-btn .label b { display: block; font-size: 12px; font-weight: 600; }
+  .sim-btn .label small { font-size: 10px; color: #8b949e; }
+  .sim-btn.active .label small { color: #58a6ff; }
+  .sim-btn .badge-tag {
+    font-size: 9px; padding: 1px 6px;
+    border-radius: 8px; background: #388bfd22;
+    color: #58a6ff; border: 1px solid #388bfd44;
+    flex-shrink: 0;
   }
 
-  #legend hr { border: none; border-top: 1px solid #21262d; margin: 14px 0; }
+  #reset-btn {
+    width: 100%; padding: 6px; margin-top: 2px;
+    background: none; border: 1px solid #30363d;
+    border-radius: 6px; color: #8b949e; font-size: 11px;
+    cursor: pointer;
+  }
+  #reset-btn:hover { border-color: #8b949e; color: #c9d1d9; }
 
-  /* ── Info panel ── */
-  #info {
-    margin-top: 4px;
+  /* Results area */
+  #result-panel {
+    flex: 1; overflow-y: auto; padding: 14px 12px;
   }
-  #info h3 {
-    font-size: 12px; text-transform: uppercase;
-    letter-spacing: 1px; color: #8b949e;
-    margin-bottom: 8px;
+  #result-title {
+    font-size: 11px; font-weight: 700; color: #58a6ff;
+    margin-bottom: 10px; display: none;
   }
-  #info-content {
-    font-size: 12px; line-height: 1.8;
+  #result-summary {
+    display: none;
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 11px; line-height: 1.9;
+  }
+  #result-summary .s-row { display: flex; justify-content: space-between; }
+  #result-summary .s-key { color: #8b949e; }
+  #result-summary .s-val { color: #e6edf3; font-weight: 600; }
+
+  #result-table {
+    display: none;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  #result-table th {
+    text-align: left; padding: 4px 6px;
+    color: #8b949e; border-bottom: 1px solid #21262d;
+    font-weight: 500; font-size: 10px; text-transform: uppercase;
+  }
+  #result-table td {
+    padding: 5px 6px;
+    border-bottom: 1px solid #161b22;
     color: #c9d1d9;
   }
-  #info-content .key  { color: #8b949e; }
-  #info-content .val  { color: #e6edf3; font-weight: 600; }
-  #info-content .title {
-    font-size: 14px; font-weight: 700;
-    color: #58a6ff; margin-bottom: 6px;
+  #result-table tr:hover td { background: #21262d; }
+
+  .status-pill {
+    display: inline-block;
+    font-size: 9px; padding: 1px 6px; border-radius: 8px;
+    font-weight: 600;
+  }
+  .status-normal   { background: #1a4731; color: #56d364; }
+  .status-warning  { background: #3d2e0e; color: #e3b341; }
+  .status-over, .status-overload { background: #4d1a1a; color: #f85149; }
+  .status-under    { background: #3d2e0e; color: #e3b341; }
+  .status-high     { background: #4d1a1a; color: #f85149; }
+  .status-medium   { background: #3d2e0e; color: #e3b341; }
+  .status-low      { background: #1a3a5c; color: #58a6ff; }
+  .status-reverse  { background: #3d1a3d; color: #d2a8ff; }
+
+  /* Color scale bar */
+  #colorscale { display: none; margin-bottom: 10px; }
+  #colorscale-label {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: #8b949e; margin-top: 3px;
   }
 
-  /* ── Graph elements ── */
-  .link {
-    stroke-width: 2.5;
-    stroke-opacity: 0.7;
-    stroke-linecap: round;
-  }
-  .link.CONNECTS       { stroke: #388bfd; stroke-width: 3; stroke-opacity: 0.9; }
-  .link.TERMINAL       { stroke: #f0883e; stroke-width: 2; }
-  .link.CONNECTED_AT   { stroke: #444c56; stroke-width: 1.5; stroke-dasharray: 5 3; }
-
-  .node circle, .node rect, .node polygon { cursor: pointer; }
-  .node circle, .node rect, .node polygon {
-    transition: filter .15s;
-  }
-  .node:hover circle,
-  .node:hover rect,
-  .node:hover polygon {
-    filter: brightness(1.4);
-  }
-  .node.selected circle,
-  .node.selected rect,
-  .node.selected polygon {
-    filter: brightness(1.6) drop-shadow(0 0 8px currentColor);
+  #no-result {
+    color: #3d444d; font-size: 12px; font-style: italic;
+    text-align: center; margin-top: 30px;
   }
 
-  .node-label {
-    font-size: 10px;
-    fill: #8b949e;
-    pointer-events: none;
-    text-anchor: middle;
+  /* Info on node click */
+  #node-info {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #21262d;
+    display: none;
   }
-  .node-label.main {
-    font-size: 11px; fill: #c9d1d9; font-weight: 600;
-  }
+  #node-info h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8b949e; margin-bottom: 8px; }
+  #node-info-content { font-size: 11px; line-height: 1.9; }
+  #node-info-content .key { color: #8b949e; }
+  #node-info-content .val { color: #e6edf3; font-weight: 600; }
+  #node-info-content .ititle { font-size: 13px; font-weight: 700; color: #58a6ff; margin-bottom: 4px; display: block; }
 
-  /* Grid background */
-  .grid line {
-    stroke: #21262d; stroke-opacity: 0.5;
+  /* Properties Form Style */
+  .prop-form-group {
+    margin-bottom: 8px; display: flex; flex-direction: column; gap: 3px;
   }
+  .prop-form-group label { font-size: 10px; color: #8b949e; }
+  .prop-form-group input, .prop-form-group select {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 4px;
+    color: #c9d1d9; padding: 4px 6px; font-size: 11px; width: 100%;
+  }
+  .prop-form-group input:focus { border-color: #58a6ff; outline: none; }
+  .prop-action-btn {
+    width: 100%; padding: 6px; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer; margin-top: 4px;
+  }
+  .prop-btn-save { background: #1f3d5c; border: 1px solid #388bfd; color: #58a6ff; }
+  .prop-btn-save:hover { background: #28517a; color: #fff; }
+  .prop-btn-del  { background: #4d1a1a; border: 1px solid #f85149; color: #ff7b72; }
+  .prop-btn-del:hover  { background: #6e2525; color: #fff; }
 
-  /* Zoom controls */
+  /* ── Zoom controls ── */
   #zoom-controls {
-    position: fixed; bottom: 20px; left: 20px;
+    position: absolute; bottom: 16px; right: 16px;
     display: flex; flex-direction: column; gap: 4px;
+    z-index: 10;
   }
   #zoom-controls button {
-    width: 32px; height: 32px;
+    width: 28px; height: 28px;
     background: #21262d; border: 1px solid #30363d;
-    color: #c9d1d9; font-size: 18px; line-height: 1;
+    color: #c9d1d9; font-size: 14px; font-weight: 600;
     border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
   }
   #zoom-controls button:hover { background: #30363d; }
 
+  /* ── Tooltip ── */
   .tooltip {
-    position: fixed;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-size: 12px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .1s;
-    z-index: 200;
-    max-width: 200px;
-    line-height: 1.6;
+    position: fixed; background: #161b22;
+    border: 1px solid #30363d; border-radius: 6px;
+    padding: 7px 11px; font-size: 12px;
+    pointer-events: none; opacity: 0;
+    transition: opacity .1s; z-index: 200;
+    max-width: 220px; line-height: 1.6;
   }
+
+  /* ── Progress bar ── */
+  #progress-wrap {
+    display: none;
+    padding: 10px 12px 12px;
+    background: #0d1117;
+    border-bottom: 1px solid #21262d;
+    flex-shrink: 0;
+  }
+  #progress-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  #progress-sim-name {
+    font-size: 11px; font-weight: 700; color: #58a6ff;
+  }
+  #progress-pct {
+    font-size: 11px; color: #8b949e; font-weight: 600;
+  }
+  #progress-track {
+    width: 100%; height: 6px;
+    background: #21262d; border-radius: 10px; overflow: hidden;
+    margin-bottom: 6px;
+  }
+  #progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #1c3a5e, #388bfd, #58a6ff);
+    background-size: 200% 100%;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+    animation: shimmer 1.5s infinite linear;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  #progress-msg {
+    font-size: 10px; color: #8b949e;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #progress-steps {
+    display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .p-step {
+    font-size: 9px; padding: 2px 7px;
+    border-radius: 8px; border: 1px solid #30363d;
+    color: #3d444d; background: #0d1117;
+    transition: all 0.3s;
+  }
+  .p-step.done  { background: #1a3a5c; border-color: #388bfd; color: #58a6ff; }
+  .p-step.active { background: #1c3a5e; border-color: #58a6ff; color: #e6edf3;
+                   box-shadow: 0 0 6px #388bfd55; }
+
+  .spin { display: inline-block; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <div id="header">
   <h1>⚡ 전력계통 Viewer</h1>
-  <span class="badge">22.9kV 배전망</span>
+  <span class="badge">22.9 kV 배전망</span>
   <span class="badge">Neo4j CIM</span>
+  <span class="badge" style="background:#1f3d5c; border-color:#388bfd; color:#58a6ff">Cytoscape.js</span>
+  
+  <!-- Mode Toggle Section -->
+  <div id="mode-switch-wrap">
+    <button id="btn-mode-viewer" class="mode-btn active-viewer" onclick="switchMode(false)">👁️ 조회 모드</button>
+    <button id="btn-mode-edit" class="mode-btn" onclick="switchMode(true)">🛠️ 편집 모드</button>
+    <button id="btn-edit-save" class="edit-control-btn btn-save" style="display:none;" onclick="saveEdit()">저장 후 종료</button>
+    <button id="btn-edit-cancel" class="edit-control-btn btn-cancel" style="display:none;" onclick="cancelEdit()">취소</button>
+  </div>
+
   <div id="stats">
     <span>노드 <b id="s-nodes">-</b></span>
     <span>관계 <b id="s-links">-</b></span>
@@ -184,45 +411,114 @@
   </div>
 </div>
 
+<!-- Canvas Container for Cytoscape -->
 <div id="canvas">
-  <svg id="svg"></svg>
+  <div id="cy"></div>
+
+  <!-- Legend overlay top-left -->
+  <div id="legend">
+    <h3>노드 유형</h3>
+    <div class="legend-item"><div class="legend-dot" style="background:#1f3d5c; border:1px solid #388bfd"></div> 변전소</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#21262d; border:1px solid #f0883e"></div> 차단기 (CB)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1f242c; border:1px solid #388bfd"></div> 접속점 (CN)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#102a45; border:1px solid #56d364"></div> 태양광 (PV)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ffa657"></div> 부하 (구간 부하)</div>
+    <div class="legend-item"><div class="legend-rect" style="background:#f85149; opacity:.8"></div> 선로 (Line)</div>
+  </div>
+
+  <!-- Floating Editor Toolbar (Palette) - Visible only in Edit Mode -->
+  <div id="edit-palette" style="display:none;">
+    <h4>설비 도구</h4>
+    <button class="palette-btn active" data-tool="select" onclick="selectTool('select')">🖐️ 선택/이동</button>
+    <button class="palette-btn" data-tool="ConnectivityNode" onclick="selectTool('ConnectivityNode')">⚪ 접속점</button>
+    <button class="palette-btn" data-tool="Breaker" onclick="selectTool('Breaker')">🔌 차단기</button>
+    <button class="palette-btn" data-tool="SolarUnit" onclick="selectTool('SolarUnit')">☀️ 태양광</button>
+    <button class="palette-btn" data-tool="ACLineSegment" onclick="selectTool('ACLineSegment')">🌡️ 선로구간</button>
+    <button class="palette-btn" data-tool="EnergyConsumer" onclick="selectTool('EnergyConsumer')">🏠 부하설비</button>
+    <button class="palette-btn" data-tool="connect" onclick="selectTool('connect')">🔗 선로연결</button>
+  </div>
+
+  <!-- Zoom controls -->
+  <div id="zoom-controls">
+    <button id="btn-in">+</button>
+    <button id="btn-fit">⊙</button>
+    <button id="btn-out">−</button>
+  </div>
 </div>
 
-<div id="zoom-controls">
-  <button id="btn-in">+</button>
-  <button id="btn-fit">⊙</button>
-  <button id="btn-out">−</button>
-</div>
+<!-- Right panel -->
+<div id="right">
+  <div id="sim-panel">
+    <h3>시뮬레이션</h3>
 
-<div id="legend">
-  <h3>노드 유형</h3>
-  <div class="legend-item"><div class="legend-dot" style="background:#f0883e"></div> 변전소 (Substation)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#d2a8ff"></div> 차단기 (Breaker)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#388bfd"></div> 접속점 (ConnectivityNode)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#56d364"></div> 태양광 (SolarUnit)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#ffa657"></div> 부하 (EnergyConsumer)</div>
-  <div class="legend-item"><div class="legend-rect" style="background:#388bfd; opacity:.6"></div> 선로 (ACLineSegment)</div>
+    <button class="sim-btn" id="btn-voltage" onclick="runSim('voltage')">
+      <span class="icon">📊</span>
+      <span class="label">
+        <b>전압 영향</b>
+        <small>정상상태 전압상승 · 전압 프로파일</small>
+      </span>
+      <span class="badge-tag">PF</span>
+    </button>
 
-  <hr>
-  <h3>관계 유형</h3>
-  <div class="legend-item">
-    <svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#388bfd" stroke-width="2.5"/></svg>
-    CONNECTS (선로 경로)
-  </div>
-  <div class="legend-item">
-    <svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#f0883e" stroke-width="1.5"/></svg>
-    TERMINAL (CB 단자)
-  </div>
-  <div class="legend-item">
-    <svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#3d444d" stroke-width="1.5" stroke-dasharray="4 3"/></svg>
-    CONNECTED_AT (부하/PV)
+    <button class="sim-btn" id="btn-thermal" onclick="runSim('thermal')">
+      <span class="icon">🌡️</span>
+      <span class="label">
+        <b>열적 용량 초과</b>
+        <small>선로 / 변압기 과부하 해석</small>
+      </span>
+      <span class="badge-tag">PF</span>
+    </button>
+
+    <button class="sim-btn" id="btn-reverse" onclick="runSim('reverse')">
+      <span class="icon">🔄</span>
+      <span class="label">
+        <b>역조류</b>
+        <small>PV 100% 출력 기준 조류계산</small>
+      </span>
+      <span class="badge-tag">PF</span>
+    </button>
+
+    <button class="sim-btn" id="btn-fault" onclick="runSim('fault')">
+      <span class="icon">⚡</span>
+      <span class="label">
+        <b>단락용량</b>
+        <small>3상 단락고장 전류 해석</small>
+      </span>
+      <span class="badge-tag">FST</span>
+    </button>
+
+    <button id="reset-btn" onclick="resetSim()">초기화 (원래 색상으로)</button>
   </div>
 
-  <hr>
-  <div id="info">
-    <h3>선택 정보</h3>
-    <div id="info-content" style="color:#3d444d; font-style:italic">
-      노드를 클릭하세요
+  <!-- Progress bar -->
+  <div id="progress-wrap">
+    <div id="progress-header">
+      <span id="progress-sim-name"></span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div id="progress-track"><div id="progress-bar"></div></div>
+    <div id="progress-msg">준비 중...</div>
+    <div id="progress-steps"></div>
+  </div>
+
+  <div id="result-panel">
+    <div id="no-result">시뮬레이션 버튼을 클릭하세요</div>
+
+    <div id="result-title"></div>
+
+    <div id="colorscale">
+      <canvas id="colorscale-bar" width="280" height="14" style="width:100%;border-radius:4px"></canvas>
+      <div id="colorscale-label"><span id="cs-min"></span><span id="cs-mid"></span><span id="cs-max"></span></div>
+    </div>
+
+    <div id="result-summary"></div>
+    <table id="result-table"><thead id="result-thead"></thead><tbody id="result-tbody"></tbody></table>
+
+    <div id="sim-commentary" style="display:none"></div>
+
+    <div id="node-info">
+      <h4>선택 노드</h4>
+      <div id="node-info-content"><span style="color:#3d444d;font-style:italic">노드를 클릭하세요</span></div>
     </div>
   </div>
 </div>
@@ -230,75 +526,26 @@
 <div class="tooltip" id="tooltip"></div>
 
 <script>
-const COLOR = {
-  Substation:        '#f0883e',
-  Breaker:           '#d2a8ff',
-  ConnectivityNode:  '#388bfd',
-  SolarUnit:         '#56d364',
-  EnergyConsumer:    '#ffa657',
-  ACLineSegment:     '#388bfd',
-};
-
-const svg = d3.select('#svg');
-const g   = svg.append('g');
-const tooltip = document.getElementById('tooltip');
-
-// Zoom
-const zoom = d3.zoom()
-  .scaleExtent([0.15, 4])
-  .on('zoom', e => g.attr('transform', e.transform));
-svg.call(zoom);
-
-document.getElementById('btn-in').onclick  = () => svg.transition().call(zoom.scaleBy, 1.3);
-document.getElementById('btn-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.77);
-document.getElementById('btn-fit').onclick = () => fitView(true);
-
-function fitView(animate = false) {
-  const svgEl = document.getElementById('svg');
-  const W = svgEl.clientWidth, H = svgEl.clientHeight;
-  if (!W || !H) return;
-
-  // Use node positions directly (exclude grid bbox)
-  const nodeEls = svgEl.querySelectorAll('.node');
-  if (!nodeEls.length) return;
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  nodeEls.forEach(el => {
-    const t = el.getAttribute('transform') || '';
-    const m = t.match(/translate\(([^,]+),([^)]+)\)/);
-    if (m) {
-      const x = parseFloat(m[1]), y = parseFloat(m[2]);
-      minX = Math.min(minX, x); minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-    }
-  });
-  const pad = 80;
-  const bw = maxX - minX + pad * 2, bh = maxY - minY + pad * 2;
-  const scale = Math.min(W / bw, H / bh) * 0.92;
-  const tx = W / 2 - scale * (minX + (maxX - minX) / 2);
-  const ty = H / 2 - scale * (minY + (maxY - minY) / 2);
-  if (!isFinite(scale) || !isFinite(tx) || !isFinite(ty)) return;
-  const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
-  if (animate) {
-    svg.transition().duration(600).call(zoom.transform, t);
-  } else {
-    svg.call(zoom.transform, t);
+// ── 1. UUID v4 생성 ────────────────────────────────────────────────
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
   }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
-// Manual fixed layout — hierarchical top-down
+// ── 2. 좌표 레이아웃 테이블 (DB 좌표 없을 시 Fallback) ──────────────────
 const LAYOUT = {
-  // ── 변전소 / 모선 / CB ──────────────────────────────
-  '변전소':              { x:  300, y: -530 },
-  'CN_변전소모선':       { x:  300, y: -430 },   // 수평 모선 바 (중앙)
+  '변전소':              { x:  300, y: -500 },
+  'CN_변전소모선':       { x:  300, y: -430 },
   'CB_변전소출구':       { x:    0, y: -330 },
   'CN_CB출력':           { x:    0, y: -240 },
-
-  // ── 피더1: 주 간선 CN ────────────────────────────────
   'CN_접속점1_고압A':    { x:   0, y: -120 },
   'CN_접속점2_고압B':    { x:   0, y:   10 },
   'CN_BranchPoint1':     { x:   0, y:  140 },
-
-  // ── 피더1: 좌/우 분기 CN ─────────────────────────────
   'CN_좌측1_고압C_PV1':  { x: -240, y: 240 },
   'CN_우측1_고압D_PV3':  { x:  240, y: 240 },
   'CN_BranchPoint2L':    { x: -240, y: 350 },
@@ -307,8 +554,6 @@ const LAYOUT = {
   'CN_좌우말단_PV2':     { x: -140, y: 460 },
   'CN_우좌말단':         { x:  140, y: 460 },
   'CN_우우말단_PV4':     { x:  340, y: 460 },
-
-  // ── 피더1: ACLineSegment 중간점 ─────────────────────
   'Section①': { x:   0, y: -180 },
   'Section②': { x:   0, y:  -55 },
   'Section③': { x:   0, y:   75 },
@@ -320,255 +565,1303 @@ const LAYOUT = {
   'Section⑨': { x:  240, y: 295 },
   'Section⑩': { x:  190, y: 405 },
   'Section⑪': { x:  290, y: 405 },
-
-  // ── 피더2: CB / 간선 CN (빗살 구조, 오른쪽) ──────────
   'CB2_변전소출구2':  { x:  600, y: -330 },
-  'CN2_CB출력':       { x:  600, y: -240 },
-  'CN2_간선1':        { x:  600, y:  -70 },
-  'CN2_간선2':        { x:  600, y:   90 },
-  'CN2_간선3':        { x:  600, y:  250 },
-  'CN2_간선말단':     { x:  600, y:  400 },
-
-  // ── 피더2: 지선 CN (간선에서 오른쪽으로 분기) ─────────
-  'CN2_지선1말단':    { x:  820, y:  -70 },
-  'CN2_지선2말단':    { x:  820, y:   90 },
-  'CN2_지선3말단':    { x:  820, y:  250 },
-
-  // ── 피더2: ACLineSegment 중간점 ─────────────────────
-  'F2_SectionA':  { x:  600, y: -145 },   // CN2_CB출력 ↔ CN2_간선1
-  'F2_SectionB':  { x:  600, y:   10 },   // CN2_간선1 ↔ CN2_간선2
-  'F2_SectionC':  { x:  600, y:  170 },   // CN2_간선2 ↔ CN2_간선3
-  'F2_SectionD':  { x:  600, y:  325 },   // CN2_간선3 ↔ CN2_간선말단
-  'F2_SectionL1': { x:  710, y:  -70 },   // CN2_간선1 → CN2_지선1말단
-  'F2_SectionL2': { x:  710, y:   90 },   // CN2_간선2 → CN2_지선2말단
-  'F2_SectionL3': { x:  710, y:  250 },   // CN2_간선3 → CN2_지선3말단
+  'CN_F2_CB출력':     { x:  600, y: -240 },
+  'CN_F2_분기A':      { x:  600, y:  -70 },
+  'CN_F2_분기B':      { x:  600, y:   90 },
+  'CN_F2_분기C':      { x:  600, y:  250 },
+  'CN_F2_말단':       { x:  600, y:  400 },
+  'CN_F2_고객1':      { x:  820, y:  -70 },
+  'CN_F2_지선2_PV':   { x:  820, y:   90 },
+  'CN_F2_고객3':      { x:  820, y:  250 },
+  'F2_SectionA':  { x:  600, y: -155 },
+  'F2_SectionB':  { x:  600, y:   10 },
+  'F2_SectionC':  { x:  600, y:  170 },
+  'F2_SectionD':  { x:  600, y:  325 },
+  'F2_SectionL1': { x:  710, y:  -70 },
+  'F2_SectionL2': { x:  710, y:   90 },
+  'F2_SectionL3': { x:  710, y:  250 },
+  'PV1_좌측1':    { x: -310, y: 270 },
+  'PV2_좌우말단': { x: -210, y: 490 },
+  'PV3_우측1':    { x:  170, y: 270 },
+  'PV4_우우말단': { x:  270, y: 490 },
+  'F2_PV_지선2':  { x:  750, y: 120 },
 };
 
-function nodePos(n) {
-  return LAYOUT[n.name] || { x: 0, y: 0 };
+const BASE_COLOR = {
+  Substation: '#1f3d5c',
+  Breaker: '#21262d',
+  ConnectivityNode: '#1f242c',
+  SolarUnit: '#102a45',
+  ACLineSegment: '#1c3a5e',
+};
+
+// ── 3. 상태 관리 변수 ────────────────────────────────────────────────
+let editMode = false;
+let activeTool = 'select'; // select, ConnectivityNode, Breaker, SolarUnit, ACLineSegment, EnergyConsumer, connect
+let connectSourceNode = null;
+let currentSim = null;
+
+// ── 4. Cytoscape 객체 및 드로잉 빌더 ─────────────────────────────
+let cy;
+const tooltip = document.getElementById('tooltip');
+
+function loadGraphData() {
+  fetch('/api/graph').then(r => r.json()).then(data => {
+    const allNodes = data.nodes;
+    const allLinks = data.links;
+    const byId = {};
+    allNodes.forEach(n => byId[n.id] = n);
+
+    document.getElementById('s-nodes').textContent = allNodes.length;
+    document.getElementById('s-links').textContent = allLinks.length;
+    document.getElementById('s-pv').textContent    = allNodes.filter(n => n.label === 'SolarUnit').length;
+    document.getElementById('s-load').textContent  =
+      allNodes.filter(n => n.label === 'ACLineSegment' && n.load_p_mw != null).length;
+
+    // x, y 좌표 바인딩 (DB 좌표 우선, 없으면 LAYOUT Fallback)
+    allNodes.forEach(n => {
+      const dbX = n.x;
+      const dbY = n.y;
+      if (dbX != null && dbY != null) {
+        n.x = parseFloat(dbX);
+        n.y = parseFloat(dbY);
+      } else {
+        const pos = LAYOUT[n.name] || { x: 0, y: 0 };
+        n.x = pos.x; n.y = pos.y;
+      }
+    });
+
+    // ACLineSegment 위치 보정 (간선 구간 모선 계산 - 좌표 없는 신규 노드 등)
+    allNodes.forEach(n => {
+      if (n.x === 0 && n.y === 0 && n.label === 'ACLineSegment' && n.name && n.name.startsWith('Section')) {
+        const cons = allLinks.filter(l => l.type === 'CONNECTS' && (l.source === n.id || l.target === n.id));
+        const cns  = cons.map(l => byId[l.source === n.id ? l.target : l.source])
+                         .filter(x => x && x.label === 'ConnectivityNode');
+        if (cns.length >= 2) { n.x = (cns[0].x + cns[1].x) / 2; n.y = (cns[0].y + cns[1].y) / 2; }
+      }
+    });
+
+    const cyElements = [];
+    allNodes.forEach(n => {
+      cyElements.push({
+        group: 'nodes',
+        data: { id: n.id, name: n.name, label: n.label, ...n },
+        position: { x: n.x, y: n.y }
+      });
+    });
+
+    allLinks.forEach(l => {
+      cyElements.push({
+        group: 'edges',
+        data: { id: l.id, source: l.source, target: l.target, type: l.type, ...l }
+      });
+    });
+
+    if (cy) {
+      cy.destroy();
+    }
+    initCytoscape(cyElements);
+  });
 }
 
-fetch('/api/graph').then(r => r.json()).then(data => {
-  const { nodes, links } = data;
-
-  // Stats
-  document.getElementById('s-nodes').textContent = nodes.length;
-  document.getElementById('s-links').textContent = links.length;
-  document.getElementById('s-pv').textContent    = nodes.filter(n => n.label === 'SolarUnit').length;
-  document.getElementById('s-load').textContent  = nodes.filter(n => n.label === 'EnergyConsumer').length;
-
-  // ID → node map
-  const byId = {};
-  nodes.forEach(n => { byId[n.id] = n; });
-
-  // Assign positions
-  nodes.forEach(n => {
-    const pos = nodePos(n);
-    n.x = pos.x; n.y = pos.y;
-  });
-
-  // Offset EnergyConsumer and SolarUnit near their CN
-  nodes.forEach(n => {
-    if (n.label === 'ACLineSegment') {
-      // find from/to links via CONNECTS
-      const cons = links.filter(l => l.type === 'CONNECTS' && (l.source === n.id || l.target === n.id));
-      const cnNodes = cons.map(l => byId[l.source === n.id ? l.target : l.source])
-                         .filter(x => x && x.label === 'ConnectivityNode');
-      if (cnNodes.length >= 2) {
-        n.x = (cnNodes[0].x + cnNodes[1].x) / 2;
-        n.y = (cnNodes[0].y + cnNodes[1].y) / 2;
-      }
-    }
-  });
-
-  // Place EC and PV offset from their CN
-  let ecOffset = 0, pvOffset = 0;
-  nodes.forEach(n => {
-    if (n.label === 'EnergyConsumer' || n.label === 'SolarUnit') {
-      const cnLink = links.find(l => l.type === 'CONNECTED_AT' && l.source === n.id);
-      if (cnLink) {
-        const cn = byId[cnLink.target];
-        if (cn) {
-          const side = n.label === 'EnergyConsumer' ? 1 : -1;
-          n.x = cn.x + side * 70;
-          n.y = cn.y + 30;
+function initCytoscape(elements) {
+  cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: elements,
+    boxSelectionEnabled: false,
+    autounselectify: true,
+    userZoomingEnabled: false,
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'content': 'data(name)',
+          'text-valign': 'bottom',
+          'text-halign': 'center',
+          'color': '#8b949e',
+          'font-family': 'Inter, sans-serif',
+          'font-size': '10px',
+          'background-color': function(ele) { return BASE_COLOR[ele.data('label')] || '#8b949e'; },
+          'border-width': 1.5,
+          'border-color': '#30363d',
+          'text-margin-y': 5,
+          'transition-property': 'background-color, border-color, line-color, width, height',
+          'transition-duration': '0.2s'
+        }
+      },
+      {
+        selector: 'node[label="Substation"]',
+        style: {
+          'shape': 'round-rectangle',
+          'width': 70,
+          'height': 38,
+          'content': '⚡ 변전소',
+          'text-valign': 'center',
+          'color': '#e6edf3',
+          'font-weight': 'bold',
+          'background-color': '#1f3d5c',
+          'border-color': '#388bfd',
+          'border-width': 2
+        }
+      },
+      {
+        selector: 'node[label="Breaker"]',
+        style: {
+          'shape': 'rectangle',
+          'width': 32,
+          'height': 32,
+          'content': function(ele) {
+            const load = ele.data('sim_load');
+            return load ? `CB\n${load}` : 'CB';
+          },
+          'text-valign': 'center',
+          'text-wrap': 'wrap',
+          'color': function(ele) { return ele.data('sim_load') ? '#e3b341' : '#8b949e'; },
+          'font-weight': function(ele) { return ele.data('sim_load') ? 'bold' : 'normal'; },
+          'font-size': '9px',
+          'border-color': '#f0883e',
+          'border-width': 2
+        }
+      },
+      {
+        selector: 'node[label="ConnectivityNode"]',
+        style: {
+          'shape': 'ellipse',
+          'width': 14,
+          'height': 14,
+          'border-color': '#388bfd',
+          'border-width': 1.5,
+          'content': function(ele) {
+            const name = shortName(ele.data('name'));
+            const v = ele.data('sim_val');
+            return v ? `${name}\n[${v}]` : name;
+          },
+          'text-wrap': 'wrap'
+        }
+      },
+      {
+        selector: 'node[name="CN_변전소모선"]',
+        style: {
+          'shape': 'rectangle',
+          'width': 560,
+          'height': 14,
+          'content': '22.9kV 변전소 모선',
+          'text-valign': 'top',
+          'text-margin-y': -5,
+          'color': '#58a6ff',
+          'background-color': '#112233',
+          'border-color': '#388bfd',
+          'border-width': 2.5
+        }
+      },
+      {
+        selector: 'node[label="SolarUnit"]',
+        style: {
+          'shape': 'triangle',
+          'width': 26,
+          'height': 22,
+          'border-color': '#56d364',
+          'border-width': 2,
+          'content': function(ele) {
+            const name = ele.data('name');
+            const sim = ele.data('sim_val');
+            const rated = ele.data('rated_mw') ? `${ele.data('rated_mw')}MW` : '';
+            return sim ? `${name}\n[${sim}]` : (rated ? `${name}\n(${rated})` : name);
+          },
+          'text-wrap': 'wrap',
+          'color': '#56d364'
+        }
+      },
+      {
+        selector: 'node[label="ACLineSegment"]',
+        style: {
+          'shape': 'rectangle',
+          'width': 64,
+          'height': 18,
+          'border-color': '#388bfd',
+          'border-width': 1.5,
+          'background-color': '#112233',
+          'content': function(ele) {
+            const name = ele.data('name') || '';
+            const sim = ele.data('sim_val');
+            return sim ? `${name}\n[${sim}]` : name;
+          },
+          'text-wrap': 'wrap',
+          'text-valign': 'center',
+          'color': '#58a6ff',
+          'font-size': '9px'
+        }
+      },
+      {
+        selector: 'node[label="EnergyConsumer"]',
+        style: {
+          'shape': 'hexagon',
+          'width': 22,
+          'height': 22,
+          'border-color': '#ffa657',
+          'border-width': 1.5,
+          'background-color': '#241a0d',
+          'content': function(ele) {
+            const name = ele.data('name') || '';
+            const p = ele.data('p_mw');
+            return p ? `${name}\n(${p}MW)` : name;
+          },
+          'text-wrap': 'wrap',
+          'color': '#ffa657'
+        }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'width': 2,
+          'line-color': '#21262d',
+          'curve-style': 'straight',
+          'opacity': 0.6,
+          'transition-property': 'line-color, width, opacity',
+          'transition-duration': '0.2s'
+        }
+      },
+      {
+        selector: 'edge[type="CONNECTS"]',
+        style: {
+          'width': 3,
+          'line-color': '#f85149',
+          'opacity': 0.85
+        }
+      },
+      {
+        selector: 'edge[type="TERMINAL"]',
+        style: {
+          'width': 2.2,
+          'line-color': '#e3b341',
+          'opacity': 0.8
+        }
+      },
+      {
+        selector: 'edge[type="CONNECTED_AT"]',
+        style: {
+          'width': 1.5,
+          'line-style': 'dashed',
+          'line-color': '#444c56',
+          'opacity': 0.6
+        }
+      },
+      {
+        selector: 'node:hover',
+        style: {
+          'border-color': '#58a6ff',
+          'border-width': 2.5
+        }
+      },
+      {
+        selector: 'node.selected',
+        style: {
+          'border-color': '#58a6ff',
+          'border-width': 3,
+          'background-color': '#1c3a5e'
+        }
+      },
+      {
+        selector: 'node.connect-source',
+        style: {
+          'border-color': '#56d364',
+          'border-width': 4,
+          'background-color': '#13331b'
         }
       }
+    ],
+    layout: {
+      name: 'preset'
     }
   });
 
-  // Draw grid
-  const gridG = g.append('g').attr('class', 'grid');
-  for (let x = -800; x <= 800; x += 100)
-    gridG.append('line').attr('x1', x).attr('y1', -600).attr('x2', x).attr('y2', 700);
-  for (let y = -600; y <= 700; y += 100)
-    gridG.append('line').attr('x1', -800).attr('y1', y).attr('x2', 800).attr('y2', y);
+  // ── 드래그 잠금 해제 제어 ──
+  cy.autoungrabify(!editMode);
 
-  // Draw links — CONNECTED_AT behind, CONNECTS and TERMINAL on top
-  ['CONNECTED_AT', 'TERMINAL', 'CONNECTS'].forEach(lt => {
-    g.selectAll(`.link-${lt}`)
-      .data(links.filter(l => l.type === lt))
-      .join('line')
-      .attr('class', `link ${lt}`)
-      .attr('x1', l => byId[l.source]?.x ?? 0)
-      .attr('y1', l => byId[l.source]?.y ?? 0)
-      .attr('x2', l => byId[l.target]?.x ?? 0)
-      .attr('y2', l => byId[l.target]?.y ?? 0)
-      .on('mouseover', (e, l) => {
-        let html = `<b>${l.type}</b>`;
-        if (l.direction) html += `<br>방향: ${l.direction}`;
-        showTooltip(e, html);
-      })
-      .on('mousemove', e => moveTooltip(e))
-      .on('mouseout', hideTooltip);
+  // ── 이벤트 바인딩 ──
+  cy.on('tap', function(evt) {
+    // 캔버스 빈 곳 클릭 시 신규 설비 배치
+    if (editMode && activeTool !== 'select' && activeTool !== 'connect' && evt.target === cy) {
+      const position = evt.position;
+      const newId = generateUUID();
+      const newName = activeTool.substring(0, 3).toUpperCase() + '_' + newId.substring(0, 5);
+
+      const defaultProps = {
+        ConnectivityNode: { voltage_kv: 22.9 },
+        Breaker: { normalOpen: false },
+        SolarUnit: { rated_mw: 1.0, p_mw: 0.5 },
+        ACLineSegment: { length_km: 1.0, r_ohm: 0.19, x_ohm: 0.38, conductor_mm2: 95 },
+        EnergyConsumer: { p_mw: 0.2, q_mvar: 0.1 }
+      };
+
+      cy.add({
+        group: 'nodes',
+        data: {
+          id: newId,
+          name: newName,
+          label: activeTool,
+          ...(defaultProps[activeTool] || {})
+        },
+        position: position
+      });
+      return;
+    }
   });
 
-  // Draw nodes
-  const nodeG = g.selectAll('.node')
-    .data(nodes)
-    .join('g')
-    .attr('class', 'node')
-    .attr('transform', n => `translate(${n.x},${n.y})`)
-    .on('click', (e, n) => selectNode(n))
-    .on('mouseover', (e, n) => showTooltip(e, tooltipHtml(n)))
-    .on('mousemove', e => moveTooltip(e))
-    .on('mouseout', hideTooltip);
+  cy.on('tap', 'node', function(evt) {
+    const node = evt.target;
+    cy.nodes().removeClass('selected');
+    node.addClass('selected');
 
-  // Shape by label
-  nodeG.each(function(n) {
-    const el = d3.select(this);
-    const c = COLOR[n.label] || '#8b949e';
-
-    if (n.label === 'Substation') {
-      el.append('rect')
-        .attr('x', -28).attr('y', -18)
-        .attr('width', 56).attr('height', 36)
-        .attr('rx', 4)
-        .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
-      el.append('text').attr('class', 'node-label main').attr('y', 5).text('⚡ 변전소');
-    }
-    else if (n.label === 'Breaker') {
-      el.append('rect')
-        .attr('x', -16).attr('y', -16)
-        .attr('width', 32).attr('height', 32)
-        .attr('rx', 3)
-        .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
-      el.append('text').attr('class', 'node-label').attr('y', 4).text('CB');
-    }
-    else if (n.label === 'ConnectivityNode') {
-      if (n.name === 'CN_변전소모선') {
-        // 수평 모선 바: CB1(x=0)과 CB2(x=600) 사이, 중심 x=300
-        el.append('rect')
-          .attr('x', -320).attr('y', -8)
-          .attr('width', 640).attr('height', 16)
-          .attr('rx', 4)
-          .attr('fill', '#1f3d5c').attr('stroke', '#388bfd').attr('stroke-width', 3);
-        el.append('text').attr('class', 'node-label')
-          .attr('y', -16).style('font-size', '10px').style('fill', '#58a6ff')
-          .text('22.9kV 모선');
+    // 선로 연결 도구 작동 로직
+    if (editMode && activeTool === 'connect') {
+      if (!connectSourceNode) {
+        connectSourceNode = node;
+        node.addClass('connect-source');
       } else {
-        el.append('circle').attr('r', 10)
-          .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
+        const targetNode = node;
+        if (connectSourceNode.id() !== targetNode.id()) {
+          // 관계 분류 자동 배정 (PV나 Consumer는 CONNECTED_AT, 그외는 CONNECTS)
+          const srcLbl = connectSourceNode.data('label');
+          const tgtLbl = targetNode.data('label');
+          let relType = 'CONNECTS';
+
+          if (srcLbl === 'SolarUnit' || srcLbl === 'EnergyConsumer' || tgtLbl === 'SolarUnit' || tgtLbl === 'EnergyConsumer') {
+            relType = 'CONNECTED_AT';
+          } else if (srcLbl === 'Breaker' || tgtLbl === 'Breaker') {
+            relType = 'TERMINAL';
+          }
+
+          cy.add({
+            group: 'edges',
+            data: {
+              id: generateUUID(),
+              source: connectSourceNode.id(),
+              target: targetNode.id(),
+              type: relType
+            }
+          });
+        }
+        connectSourceNode.removeClass('connect-source');
+        connectSourceNode = null;
       }
+      return;
     }
-    else if (n.label === 'SolarUnit') {
-      el.append('polygon')
-        .attr('points', '0,-14 12,7 -12,7')
-        .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
-      el.append('text').attr('class', 'node-label').attr('y', 20)
-        .style('fill', '#56d364')
-        .text(n.rated_mw ? `☀️ ${n.rated_mw}MW` : '☀️');
-    }
-    else if (n.label === 'EnergyConsumer') {
-      el.append('polygon')
-        .attr('points', '-10,-10 10,-10 0,12')
-        .attr('fill', c).attr('stroke', '#0d1117').attr('stroke-width', 2);
-      el.append('text').attr('class', 'node-label').attr('y', 24)
-        .style('fill', '#ffa657')
-        .text(n.p_mw ? `${n.p_mw}MW` : '');
-    }
-    else if (n.label === 'ACLineSegment') {
-      el.append('rect')
-        .attr('x', -22).attr('y', -9)
-        .attr('width', 44).attr('height', 18)
-        .attr('rx', 3)
-        .attr('fill', '#1c3a5e').attr('stroke', '#388bfd').attr('stroke-width', 2);
-      el.append('text').attr('class', 'node-label')
-        .attr('y', 4).style('font-size', '9px').style('fill', '#58a6ff')
-        .text(n.name || '');
-      el.append('text').attr('class', 'node-label')
-        .attr('y', 26).style('font-size', '9px').style('fill', '#388bfd')
-        .text(n.length_km ? `${n.length_km}km` : '');
+
+    // 상세 보기 또는 편집 폼 노출
+    if (editMode) {
+      showNodePropertyForm(node);
+    } else {
+      selectNode(node.data());
     }
   });
 
-  // CN type label
-  nodeG.filter(n => n.label === 'ConnectivityNode')
-    .append('text')
-    .attr('class', 'node-label')
-    .attr('y', 22)
-    .text(n => shortName(n.name));
+  cy.on('mouseover', 'node, edge', function(evt) {
+    if (editMode) return; // 편집 모드 중에는 툴팁 차단
+    const ele = evt.target;
+    const isNode = ele.isNode();
+    const html = isNode ? tipHtml(ele.data()) : `<b>${ele.data('type')}</b>`;
+    
+    tooltip.innerHTML = html;
+    tooltip.style.opacity = 1;
+  });
 
-  // wait for DOM paint then fit
-  requestAnimationFrame(() => requestAnimationFrame(fitView));
-});
+  cy.on('mousemove', 'node, edge', function(evt) {
+    if (editMode) return;
+    tooltip.style.left = (evt.renderedPosition.x + 14) + 'px';
+    tooltip.style.top = (evt.renderedPosition.y - 10) + 'px';
+  });
 
-function shortName(name) {
-  if (!name) return '';
-  return name.replace('CN_', '').replace(/_/g, ' ').substring(0, 10);
+  cy.on('mouseout', 'node, edge', function() {
+    tooltip.style.opacity = 0;
+  });
+
+  // Cmd / Ctrl + 휠 줌 바인딩
+  window.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey) {
+      cy.userZoomingEnabled(true);
+    }
+  });
+  window.addEventListener('keyup', e => {
+    if (!e.metaKey && !e.ctrlKey) {
+      cy.userZoomingEnabled(false);
+    }
+  });
+
+  document.getElementById('cy').addEventListener('wheel', e => {
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.getElementById('btn-in').onclick  = () => cy.animate({ zoom: cy.zoom() * 1.25 }, { duration: 200 });
+  document.getElementById('btn-out').onclick = () => cy.animate({ zoom: cy.zoom() * 0.8 }, { duration: 200 });
+  document.getElementById('btn-fit').onclick = () => cy.animate({ fit: { padding: 40 } }, { duration: 300 });
+
+  setTimeout(() => cy.fit({ padding: 50 }), 200);
+
+  // cytoscape-grid-guide 초기화 (Viewer Mode 기준 기본값 비활성화)
+  cy.gridGuide({
+    drawGrid: false,
+    gridColor: '#ffffff88', // 은은한 흰색 격자점
+    gridStyle: 'dot',       // 점(dot) 격자 스타일 적용
+    lineWidth: 1.5,         // 작은 흰색 점
+    gridSpacing: 25,        // 약간의 격자 간격 확장 (25px)
+    snapToGrid: false,
+    snapToAlignmentLocation: false,
+    snapToAlignmentLocationOnRelease: false,
+    drawAlignmentQueue: false,
+    alignmentLineColor: '#f85149',
+    alignmentLineWidth: 1
+  });
 }
 
-function tooltipHtml(n) {
-  const lines = [`<b>${n.label}</b>: ${n.name || ''}`];
-  if (n.voltage_kv)   lines.push(`전압: ${n.voltage_kv} kV`);
-  if (n.rated_mw)     lines.push(`정격: ${n.rated_mw} MW`);
-  if (n.p_mw)         lines.push(`유효전력: ${n.p_mw} MW`);
-  if (n.q_mvar)       lines.push(`무효전력: ${n.q_mvar} Mvar`);
-  if (n.length_km)    lines.push(`길이: ${n.length_km} km`);
-  if (n.r_ohm)        lines.push(`R: ${n.r_ohm} Ω`);
-  if (n.x_ohm)        lines.push(`X: ${n.x_ohm} Ω`);
-  if (n.conductor_mm2) lines.push(`전선: ACSR ${n.conductor_mm2}mm²`);
-  if (n.type)         lines.push(`타입: ${n.type}`);
-  return lines.join('<br>');
+// ── 5. Mode Switch (조회/편집 전환) ──────────────────────────────────
+function switchMode(toEdit) {
+  if (editMode === toEdit) return;
+  editMode = toEdit;
+
+  const btnViewer = document.getElementById('btn-mode-viewer');
+  const btnEdit   = document.getElementById('btn-mode-edit');
+  const btnSave   = document.getElementById('btn-edit-save');
+  const btnCancel = document.getElementById('btn-edit-cancel');
+  const canvasEl  = document.getElementById('canvas');
+  const paletteEl = document.getElementById('edit-palette');
+  const simPanel  = document.getElementById('sim-panel');
+
+  if (editMode) {
+    btnViewer.classList.remove('active-viewer');
+    btnEdit.classList.add('active-edit');
+    btnSave.style.display = 'block';
+    btnCancel.style.display = 'block';
+    canvasEl.classList.add('editing');
+    paletteEl.style.display = 'flex';
+    simPanel.style.opacity = '0.3';
+    simPanel.style.pointerEvents = 'none';
+
+    clearSimOverlay();
+    selectTool('select');
+    document.getElementById('node-info-content').innerHTML = '<span style="color:#f85149;font-style:italic">편집 모드가 켜졌습니다. 노드를 선택하거나 드래그하여 좌표를 수정하세요.</span>';
+    document.getElementById('node-info').style.display = 'block';
+  } else {
+    btnViewer.classList.add('active-viewer');
+    btnEdit.classList.remove('active-edit');
+    btnSave.style.display = 'none';
+    btnCancel.style.display = 'none';
+    canvasEl.classList.remove('editing');
+    paletteEl.style.display = 'none';
+    simPanel.style.opacity = '1';
+    simPanel.style.pointerEvents = 'auto';
+
+    document.getElementById('node-info-content').innerHTML = '<span style="color:#3d444d;font-style:italic">노드를 클릭하세요</span>';
+  }
+
+  if (cy) {
+    cy.autoungrabify(!editMode);
+    cy.nodes().removeClass('selected');
+
+    // 그리드 가이드 및 정렬 스냅 동적 연동
+    cy.gridGuide('setOption', 'drawGrid', editMode);
+    cy.gridGuide('setOption', 'snapToGrid', editMode);
+    cy.gridGuide('setOption', 'snapToAlignmentLocation', editMode);
+    cy.gridGuide('setOption', 'snapToAlignmentLocationOnRelease', editMode);
+    cy.gridGuide('setOption', 'drawAlignmentQueue', editMode);
+
+    if (connectSourceNode) {
+      connectSourceNode.removeClass('connect-source');
+      connectSourceNode = null;
+    }
+  }
 }
 
-function showTooltip(e, html) {
-  tooltip.innerHTML = html;
-  tooltip.style.opacity = 1;
-  moveTooltip(e);
-}
-function moveTooltip(e) {
-  tooltip.style.left = (e.clientX + 14) + 'px';
-  tooltip.style.top  = (e.clientY - 10) + 'px';
-}
-function hideTooltip() { tooltip.style.opacity = 0; }
+function selectTool(tool) {
+  activeTool = tool;
+  document.querySelectorAll('.palette-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.querySelector(`.palette-btn[data-tool="${tool}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+  }
 
-let selectedEl = null;
+  if (connectSourceNode) {
+    connectSourceNode.removeClass('connect-source');
+    connectSourceNode = null;
+  }
+}
+
+// ── 6. Property Editor (노드 속성 입력 폼) ─────────────────────────
+function showNodePropertyForm(node) {
+  const n = node.data();
+  const inputs = [];
+
+  inputs.push(`
+    <div class="prop-form-group">
+      <label>이름 (Name)</label>
+      <input type="text" id="prop-name" value="${n.name || ''}">
+    </div>
+  `);
+
+  if (n.label === 'SolarUnit') {
+    inputs.push(`
+      <div class="prop-form-group">
+        <label>정격 용량 [MW]</label>
+        <input type="number" id="prop-rated-mw" step="0.1" value="${n.rated_mw || 1.0}">
+      </div>
+    `);
+  } else if (n.label === 'ACLineSegment') {
+    inputs.push(`
+      <div class="prop-form-group">
+        <label>길이 [km]</label>
+        <input type="number" id="prop-length-km" step="0.01" value="${n.length_km || 1.0}">
+      </div>
+      <div class="prop-form-group">
+        <label>R 저항 [Ω]</label>
+        <input type="number" id="prop-r-ohm" step="0.001" value="${n.r_ohm || 0.19}">
+      </div>
+      <div class="prop-form-group">
+        <label>X 리액턴스 [Ω]</label>
+        <input type="number" id="prop-x-ohm" step="0.001" value="${n.x_ohm || 0.38}">
+      </div>
+      <div class="prop-form-group">
+        <label>전선 규격 [mm²]</label>
+        <select id="prop-mm2">
+          <option value="160" ${n.conductor_mm2 === 160 ? 'selected':''}>160 mm² (정격 400A)</option>
+          <option value="95" ${n.conductor_mm2 === 95 || !n.conductor_mm2 ? 'selected':''}>95 mm² (정격 310A)</option>
+          <option value="60" ${n.conductor_mm2 === 60 ? 'selected':''}>60 mm² (정격 240A)</option>
+        </select>
+      </div>
+    `);
+  } else if (n.label === 'EnergyConsumer') {
+    inputs.push(`
+      <div class="prop-form-group">
+        <label>유효전력 부하 [MW]</label>
+        <input type="number" id="prop-p-mw" step="0.01" value="${n.p_mw || 0.2}">
+      </div>
+      <div class="prop-form-group">
+        <label>무효전력 부하 [Mvar]</label>
+        <input type="number" id="prop-q-mvar" step="0.01" value="${n.q_mvar || 0.1}">
+      </div>
+    `);
+  } else if (n.label === 'ConnectivityNode') {
+    inputs.push(`
+      <div class="prop-form-group">
+        <label>공칭 전압 [kV]</label>
+        <input type="number" id="prop-vol-kv" step="0.1" value="${n.voltage_kv || 22.9}">
+      </div>
+    `);
+  } else if (n.label === 'Breaker') {
+    inputs.push(`
+      <div class="prop-form-group">
+        <label>상태 (개방 유무)</label>
+        <select id="prop-open">
+          <option value="false" ${n.normalOpen === false ? 'selected':''}>투입 (Closed)</option>
+          <option value="true" ${n.normalOpen === true ? 'selected':''}>개방 (Open)</option>
+        </select>
+      </div>
+    `);
+  }
+
+  const html = `
+    <span class="ititle">⚡ ${n.label} 편집</span>
+    <div style="margin-top: 10px;">
+      ${inputs.join('')}
+      <button class="prop-action-btn prop-btn-save" onclick="saveNodeProps('${n.id}')">속성 적용</button>
+      <button class="prop-action-btn prop-btn-del" onclick="deleteNode('${n.id}')">설비 삭제</button>
+    </div>
+  `;
+
+  document.getElementById('node-info-content').innerHTML = html;
+  document.getElementById('node-info').style.display = 'block';
+}
+
+function saveNodeProps(nodeId) {
+  const node = cy.$id(nodeId);
+  if (!node) return;
+
+  const label = node.data('label');
+  const nameVal = document.getElementById('prop-name').value;
+  node.data('name', nameVal);
+
+  if (label === 'SolarUnit') {
+    node.data('rated_mw', parseFloat(document.getElementById('prop-rated-mw').value));
+  } else if (label === 'ACLineSegment') {
+    node.data('length_km', parseFloat(document.getElementById('prop-length-km').value));
+    node.data('r_ohm', parseFloat(document.getElementById('prop-r-ohm').value));
+    node.data('x_ohm', parseFloat(document.getElementById('prop-x-ohm').value));
+    node.data('conductor_mm2', parseInt(document.getElementById('prop-mm2').value));
+  } else if (label === 'EnergyConsumer') {
+    node.data('p_mw', parseFloat(document.getElementById('prop-p-mw').value));
+    node.data('q_mvar', parseFloat(document.getElementById('prop-q-mvar').value));
+  } else if (label === 'ConnectivityNode') {
+    node.data('voltage_kv', parseFloat(document.getElementById('prop-vol-kv').value));
+  } else if (label === 'Breaker') {
+    node.data('normalOpen', document.getElementById('prop-open').value === 'true');
+  }
+
+  alert('노드 속성이 화면에 임시 적용되었습니다.');
+  showNodePropertyForm(node);
+}
+
+function deleteNode(nodeId) {
+  const node = cy.$id(nodeId);
+  if (!node) return;
+
+  if (confirm(`정말로 이 설비(${node.data('name')})를 삭제하시겠습니까? 관련 연결 선로도 함께 소멸됩니다.`)) {
+    cy.remove(node);
+    document.getElementById('node-info-content').innerHTML = '<span style="color:#ffa657;font-style:italic">설비가 삭제되었습니다.</span>';
+  }
+}
+
+// ── 7. 저장 및 취소 API 통신 ──────────────────────────────────────
+function saveEdit() {
+  if (!confirm('현재 편집 내용을 저장하고 편집 모드를 종료하시겠습니까?')) return;
+
+  const nodes = [];
+  const links = [];
+
+  // Cytoscape 노드 추출
+  cy.nodes().forEach(node => {
+    const data = node.data();
+    const position = node.position();
+    nodes.push({
+      ...data,
+      x: position.x,
+      y: position.y
+    });
+  });
+
+  // Cytoscape 에지 추출
+  cy.edges().forEach(edge => {
+    const data = edge.data();
+    links.push({
+      ...data
+    });
+  });
+
+  fetch('/api/graph/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nodes, links })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('계통망이 Neo4j DB에 저장되었습니다!');
+      switchMode(false);
+      loadGraphData();
+    } else {
+      alert('오류 발생: ' + (data.error || '저장 실패'));
+    }
+  })
+  .catch(err => {
+    alert('서버 저장 실패: ' + err);
+  });
+}
+
+function cancelEdit() {
+  if (!confirm('편집된 내용이 모두 폐기됩니다. 취소하시겠습니까?')) return;
+  switchMode(false);
+  loadGraphData();
+}
+
+// 초기화 호출
+loadGraphData();
+
+// ── 8. Tooltip 헬퍼 함수 ──────────────────────────────────────────
+function tipHtml(n) {
+  const rows = [`<b>${n.label}</b>: ${n.name||''}`];
+  if (n.voltage_kv)    rows.push(`전압: ${n.voltage_kv} kV`);
+  if (n.rated_mw)      rows.push(`정격: ${n.rated_mw} MW`);
+  if (n.p_mw)          rows.push(`유효전력: ${n.p_mw} MW`);
+  if (n.length_km)     rows.push(`길이: ${n.length_km} km`);
+  if (n.conductor_mm2) rows.push(`전선: ACSR ${n.conductor_mm2}mm²`);
+  if (n.flow_p_kw != null) rows.push(`조류(P): <b>${(n.flow_p_kw/1000).toFixed(2)} MW</b>`);
+  if (n.flow_q_kvar != null) rows.push(`조류(Q): ${(n.flow_q_kvar/1000).toFixed(2)} Mvar`);
+  if (n.load_p_mw != null) rows.push(`구간부하: <b style="color:#ffa657">${n.load_p_mw} MW</b>${n.load_name ? ` (${n.load_name})` : ''}`);
+  return rows.join('<br>');
+}
+
+// ── 9. Node Selection ─────────────────────────────────────────────
 function selectNode(n) {
-  if (selectedEl) selectedEl.classed('selected', false);
-  const el = d3.selectAll('.node').filter(d => d.id === n.id);
-  el.classed('selected', true);
-  selectedEl = el;
-
-  const rows = [
-    `<div class="title">${n.label}</div>`,
-    `<span class="key">이름</span>&nbsp;<span class="val">${n.name || '-'}</span>`,
-  ];
+  const rows = [`<span class="ititle">${n.label}</span>`,
+    `<span class="key">이름</span> <span class="val">${n.name||'-'}</span>`];
   if (n.voltage_kv)    rows.push(`<span class="key">전압</span> <span class="val">${n.voltage_kv} kV</span>`);
-  if (n.source_kv)     rows.push(`<span class="key">수전</span> <span class="val">${n.source_kv} kV</span>`);
   if (n.rated_mw)      rows.push(`<span class="key">정격</span> <span class="val">${n.rated_mw} MW</span>`);
   if (n.p_mw)          rows.push(`<span class="key">유효전력</span> <span class="val">${n.p_mw} MW</span>`);
   if (n.q_mvar)        rows.push(`<span class="key">무효전력</span> <span class="val">${n.q_mvar} Mvar</span>`);
-  if (n.pf)            rows.push(`<span class="key">역률</span> <span class="val">${n.pf}</span>`);
   if (n.length_km)     rows.push(`<span class="key">길이</span> <span class="val">${n.length_km} km</span>`);
   if (n.r_ohm)         rows.push(`<span class="key">저항</span> <span class="val">${n.r_ohm} Ω</span>`);
   if (n.x_ohm)         rows.push(`<span class="key">리액턴스</span> <span class="val">${n.x_ohm} Ω</span>`);
   if (n.conductor_mm2) rows.push(`<span class="key">전선</span> <span class="val">ACSR ${n.conductor_mm2}mm²</span>`);
-  if (n.type)          rows.push(`<span class="key">타입</span> <span class="val">${n.type}</span>`);
-  if (n.normalOpen !== undefined) rows.push(`<span class="key">상태</span> <span class="val">${n.normalOpen ? '개방' : '투입'}</span>`);
-  if (n.ratedCurrent_A) rows.push(`<span class="key">정격전류</span> <span class="val">${n.ratedCurrent_A} A</span>`);
+  if (n.flow_p_kw != null) rows.push(`<span class="key">조류 P</span> <span class="val" style="color:#e3b341;font-weight:700">${(n.flow_p_kw/1000).toFixed(2)} MW</span>`);
+  if (n.flow_q_kvar != null) rows.push(`<span class="key">조류 Q</span> <span class="val">${(n.flow_q_kvar/1000).toFixed(2)} Mvar</span>`);
+  if (n.load_p_mw != null) rows.push(`<span class="key">구간 부하</span> <span class="val" style="color:#ffa657;font-weight:700">${n.load_p_mw} MW</span>`);
+  if (n.load_name) rows.push(`<span class="key">부하명</span> <span class="val">${n.load_name}</span>`);
+  if (n.normalOpen!==undefined) rows.push(`<span class="key">상태</span> <span class="val">${n.normalOpen?'개방':'투입'}</span>`);
 
-  document.getElementById('info-content').innerHTML = rows.join('<br>');
+  document.getElementById('node-info-content').innerHTML = rows.join('<br>');
+  document.getElementById('node-info').style.display = 'block';
+}
+
+// ── 10. Color & scale utilities ───────────────────────────────────
+function lerp3(a, b, t) {
+  return [
+    Math.round(a[0]+(b[0]-a[0])*t),
+    Math.round(a[1]+(b[1]-a[1])*t),
+    Math.round(a[2]+(b[2]-a[2])*t),
+  ];
+}
+function rgb(arr) { return `rgb(${arr[0]},${arr[1]},${arr[2]})`; }
+
+function voltageColor(pu) {
+  if (pu >= 0.95 && pu <= 1.05) return rgb(lerp3([56,211,100],[227,179,65], Math.abs(pu-1.0)/0.05));
+  if (pu > 1.05) return rgb(lerp3([227,179,65],[248,81,73], Math.min((pu-1.05)/0.05, 1)));
+  return rgb(lerp3([227,179,65],[248,81,73], Math.min((0.95-pu)/0.05, 1)));
+}
+
+function thermalColor(pct) {
+  if (pct <= 60)  return rgb(lerp3([56,139,253],[56,211,100], 1-pct/60));
+  if (pct <= 80)  return rgb(lerp3([56,211,100],[227,179,65], (pct-60)/20));
+  if (pct <= 100) return rgb(lerp3([227,179,65],[248,81,73], (pct-80)/20));
+  return '#f85149';
+}
+
+function faultColor(ka) {
+  if (ka > 5)  return '#f85149';
+  if (ka > 1)  return '#e3b341';
+  return '#388bfd';
+}
+
+function drawColorScale(colors, labels) {
+  const bar = document.getElementById('colorscale-bar');
+  const ctx = bar.getContext('2d');
+  const W = bar.width;
+  const grad = ctx.createLinearGradient(0,0,W,0);
+  colors.forEach((c,i) => grad.addColorStop(i/(colors.length-1), c));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,14);
+  document.getElementById('cs-min').textContent = labels[0];
+  document.getElementById('cs-mid').textContent = labels[1];
+  document.getElementById('cs-max').textContent = labels[2];
+  document.getElementById('colorscale').style.display = 'block';
+}
+
+// ── 11. Result Renderers ─────────────────────────────────────────
+function pill(status, text) {
+  return `<span class="status-pill status-${status}">${text}</span>`;
+}
+
+function renderFeederSummary(feeders) {
+  if (!feeders) return '';
+  let html = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #30363d;">`;
+  Object.entries(feeders).forEach(([name, val]) => {
+    html += `
+      <div class="s-row">
+        <span class="s-key" style="color: #58a6ff; font-weight: 600;">⚡ ${name} 송출 부하</span>
+        <span class="s-val">${val.p_mw.toFixed(3)} MW / ${val.q_mvar.toFixed(3)} MVAr</span>
+      </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function drawCBFeederLoads(feeders) {
+  if (!feeders) return;
+  cy.nodes('[label="Breaker"]').forEach(node => {
+    const name = node.data('name');
+    let val = null;
+    if (name === 'CB_변전소출구') {
+      val = feeders['Feeder 1'];
+    } else if (name === 'CB2_변전소출구2') {
+      val = feeders['Feeder 2'];
+    }
+    if (!val) return;
+    
+    node.data('sim_load', `${val.p_mw.toFixed(3)} MW\n${val.q_mvar.toFixed(3)} MVAr`);
+  });
+}
+
+function renderResult(type, data) {
+  const titleEl = document.getElementById('result-title');
+  titleEl.textContent = SIM_META[type].label;
+  titleEl.style.display = 'block';
+
+  clearSimOverlay(); 
+
+  if (type==='voltage')  renderVoltage(data);
+  else if (type==='thermal') renderThermal(data);
+  else if (type==='reverse') renderReverse(data);
+  else if (type==='fault')   renderFault(data);
+
+  drawCBFeederLoads(data.feeders);
+}
+
+/* ── Voltage ── */
+function renderVoltage(data) {
+  const s = document.getElementById('result-summary');
+  s.innerHTML = `
+    <div class="s-row"><span class="s-key">공급 전력</span><span class="s-val">${data.source_mw} MW / ${data.source_mvar} MVAr</span></div>
+    <div class="s-row"><span class="s-key">유효 손실</span><span class="s-val">${data.total_loss_kw} kW</span></div>
+    <div class="s-row"><span class="s-key">무효 손실</span><span class="s-val">${data.total_loss_kvar} kVAr</span></div>
+  ` + renderFeederSummary(data.feeders);
+  s.style.display='block';
+
+  drawColorScale(['#56d364','#e3b341','#f85149'], ['0.90 pu','1.00 pu','1.10 pu']);
+
+  const buses = data.buses;
+
+  cy.nodes().forEach(node => {
+    const key = node.data('name')?.toLowerCase();
+    const match = buses[key] || buses[node.data('name')];
+    if (!match) return;
+
+    const col = voltageColor(match.pu);
+    node.style({
+      'background-color': col,
+      'border-color': col
+    });
+    node.data('sim_val', `${match.pu} pu`);
+  });
+
+  const thead = document.getElementById('result-thead');
+  const tbody = document.getElementById('result-tbody');
+  thead.innerHTML='<tr><th>버스</th><th>전압 [pu]</th><th>상태</th></tr>';
+  tbody.innerHTML='';
+  Object.entries(buses).sort((a,b)=>a[1].pu-b[1].pu).forEach(([name,v])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${name}</td><td>${v.pu}</td><td>${pill(v.status, v.status==='normal'?'정상':v.status==='over'?'과전압':'저전압')}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('result-table').style.display='table';
+  commentVoltage(data);
+}
+
+/* ── Thermal ── */
+function renderThermal(data) {
+  drawColorScale(['#388bfd','#56d364','#e3b341','#f85149'].slice(0,3), ['0%','80%','100%+']);
+
+  const lines = data.lines;
+
+  cy.nodes('[label="ACLineSegment"]').forEach(node => {
+    const key = node.data('name')?.replace(/ /g,'_');
+    const match = lines[key] || lines[node.data('name')];
+    if (!match) return;
+
+    const col = thermalColor(match.loading_pct);
+    node.style({
+      'background-color': col,
+      'border-color': col
+    });
+    node.data('sim_val', `${match.loading_pct}%`);
+  });
+
+  cy.edges('[type="CONNECTS"]').forEach(edge => {
+    const segNode = [edge.source(), edge.target()].find(x => x.data('label') === 'ACLineSegment');
+    if (!segNode) return;
+    const key = segNode.data('name')?.replace(/ /g,'_');
+    const match = lines[key] || lines[segNode.data('name')];
+    if (!match) return;
+
+    edge.style({
+      'line-color': thermalColor(match.loading_pct),
+      'width': match.loading_pct > 80 ? 5 : 3
+    });
+  });
+
+  const s = document.getElementById('result-summary');
+  const overloaded = Object.values(lines).filter(l=>l.status==='overload').length;
+  const warning    = Object.values(lines).filter(l=>l.status==='warning').length;
+  s.innerHTML=`
+    <div class="s-row"><span class="s-key">과부하 선로</span><span class="s-val" style="color:#f85149">${overloaded}개</span></div>
+    <div class="s-row"><span class="s-key">경고 선로 (80%↑)</span><span class="s-val" style="color:#e3b341">${warning}개</span></div>
+    <div class="s-row"><span class="s-key">정상 선로</span><span class="s-val" style="color:#56d364">${Object.keys(lines).length-overloaded-warning}개</span></div>
+  ` + renderFeederSummary(data.feeders);
+  s.style.display='block';
+
+  const thead=document.getElementById('result-thead');
+  const tbody=document.getElementById('result-tbody');
+  thead.innerHTML='<tr><th>선로</th><th>전류 [A]</th><th>부하율</th><th>상태</th></tr>';
+  tbody.innerHTML='';
+  Object.entries(lines).sort((a,b)=>b[1].loading_pct-a[1].loading_pct).forEach(([name,v])=>{
+    const tr=document.createElement('tr');
+    const statusText = v.status==='overload'?'과부하':v.status==='warning'?'경고':'정상';
+    tr.innerHTML=`<td>${name}</td><td>${v.current_a}</td><td>${v.loading_pct}%</td><td>${pill(v.status,statusText)}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('result-table').style.display='table';
+  commentThermal(data);
+}
+
+/* ── Reverse ── */
+function renderReverse(data) {
+  const pvs=data.pvs, lines=data.lines;
+
+  cy.nodes('[label="SolarUnit"]').forEach(node => {
+    const match = pvs[node.data('name')];
+    if (!match) return;
+
+    const col = match.reverse ? '#d2a8ff' : '#56d364';
+    node.style({
+      'background-color': col,
+      'border-color': col
+    });
+    node.data('sim_val', match.reverse ? '역조류' : `${match.output_kw}kW`);
+  });
+
+  cy.edges('[type="CONNECTS"]').forEach(edge => {
+    const segNode = [edge.source(), edge.target()].find(x => x.data('label') === 'ACLineSegment');
+    if (!segNode) return;
+    const key = segNode.data('name')?.replace(/ /g,'_');
+    const match = lines[key] || lines[segNode.data('name')];
+    if (!match) return;
+
+    edge.style({
+      'line-color': match.reverse ? '#d2a8ff' : '#f85149', // 기본선로가 빨간색이므로 역송은 보라색 매칭
+      'width': match.reverse ? 4.5 : 3,
+      'opacity': match.reverse ? 1.0 : 0.85
+    });
+  });
+
+  const reversePvs  = Object.values(pvs).filter(p=>p.reverse).length;
+  const reverseLines= Object.values(lines).filter(l=>l.reverse).length;
+
+  const s=document.getElementById('result-summary');
+  s.innerHTML=`
+    <div class="s-row"><span class="s-key">PV 조건</span><span class="s-val">100% 출력 (1.0 irradiance)</span></div>
+    <div class="s-row"><span class="s-key">공급 전력</span><span class="s-val">${data.source_mw} MW</span></div>
+    <div class="s-row"><span class="s-key">역조류 PV</span><span class="s-val" style="color:#d2a8ff">${reversePvs}개</span></div>
+    <div class="s-row"><span class="s-key">역조류 선로</span><span class="s-val" style="color:#d2a8ff">${reverseLines}개</span></div>
+  ` + renderFeederSummary(data.feeders);
+  s.style.display='block';
+
+  const thead=document.getElementById('result-thead');
+  const tbody=document.getElementById('result-tbody');
+  thead.innerHTML='<tr><th>PV</th><th>출력 [kW]</th><th>역조류</th></tr>';
+  tbody.innerHTML='';
+  Object.entries(pvs).forEach(([name,v])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${name}</td><td>${v.output_kw}</td><td>${v.reverse?pill('reverse','역조류'):pill('normal','정상')}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('result-table').style.display='table';
+  commentReverse(data);
+}
+
+/* ── Fault ── */
+function renderFault(data) {
+  drawColorScale(['#388bfd','#e3b341','#f85149'], ['저 (<1kA)','중 (1-5kA)','고 (>5kA)']);
+
+  const buses=data.buses;
+
+  cy.nodes().forEach(node => {
+    const key = node.data('name')?.toLowerCase();
+    const match = buses[key] || buses[node.data('name')];
+    if (!match) return;
+
+    const col = faultColor(match.isc3_ka);
+    node.style({
+      'background-color': col,
+      'border-color': col
+    });
+    node.data('sim_val', `${match.isc3_ka}kA`);
+  });
+
+  const s=document.getElementById('result-summary');
+  const high=Object.values(buses).filter(b=>b.status==='high').length;
+  const med =Object.values(buses).filter(b=>b.status==='medium').length;
+  s.innerHTML=`
+    <div class="s-row"><span class="s-key">고단락 버스 (>5kA)</span><span class="s-val" style="color:#f85149">${high}개</span></div>
+    <div class="s-row"><span class="s-key">중단락 버스 (1-5kA)</span><span class="s-val" style="color:#e3b341">${med}개</span></div>
+    <div class="s-row"><span class="s-key">저단락 버스 (<1kA)</span><span class="s-val" style="color:#388bfd">${Object.keys(buses).length-high-med}개</span></div>
+  ` + renderFeederSummary(data.feeders);
+  s.style.display='block';
+
+  const thead=document.getElementById('result-thead');
+  const tbody=document.getElementById('result-tbody');
+  thead.innerHTML='<tr><th>버스</th><th>Isc3 [kA]</th><th>단락용량[MVA]</th></tr>';
+  tbody.innerHTML='';
+  Object.entries(buses).sort((a,b)=>b[1].isc3_ka-a[1].isc3_ka).forEach(([name,v])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${name}</td><td>${v.isc3_ka}</td><td>${v.mva}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('result-table').style.display='table';
+  commentFault(data);
+}
+
+// ── 12. Remove sim overlay ─────────────────────────────────────────
+function clearSimOverlay() {
+  if (!cy) return;
+
+  cy.nodes().forEach(node => {
+    const label = node.data('label');
+    node.removeData('sim_val');
+    node.removeData('sim_load');
+
+    const baseCol = BASE_COLOR[label] || '#8b949e';
+    node.style({
+      'background-color': (label === 'ACLineSegment' ? '#112233' : baseCol),
+      'border-color': (label === 'ACLineSegment' ? '#388bfd' : baseCol)
+    });
+  });
+
+  cy.edges().forEach(edge => {
+    const type = edge.data('type');
+    edge.style({
+      'line-color': type === 'CONNECTS' ? '#f85149' : (type === 'TERMINAL' ? '#e3b341' : '#444c56'),
+      'width': type === 'CONNECTS' ? 3 : (type === 'TERMINAL' ? 2.2 : 1.5),
+      'opacity': type === 'CONNECTS' ? 0.85 : (type === 'TERMINAL' ? 0.8 : 0.6)
+    });
+  });
+
+  document.getElementById('colorscale').style.display='none';
+}
+
+// ── 13. Simulation runner ─────────────────────────────────────────
+const SIM_META = {
+  voltage: { label:'📊 전압 영향 — 결과', btn:'btn-voltage' },
+  thermal: { label:'🌡️ 열적 용량 — 결과', btn:'btn-thermal' },
+  reverse: { label:'🔄 역조류 — 결과',    btn:'btn-reverse' },
+  fault:   { label:'⚡ 단락용량 — 결과',  btn:'btn-fault'   },
+};
+
+const SIM_STEPS = {
+  voltage: [
+    'OpenDSS 엔진 연결 초기화',
+    'Neo4j 계통망 데이터 변환 로딩',
+    'ACLineSegment 및 부하 모델 구축',
+    '태양광 발전(PV) 50% 출력 데이터 반영',
+    '조류 계산 실행 (Newton Raphson)',
+  ],
+  thermal: [
+    '해석 조건 설정 및 전선 정격 대조',
+    '송출부 및 각 피더 부하 조류 해석',
+    '선로 굵기별 전류 밀도 및 손실 계산',
+    '허용전류(Ampacity) 대비 과부하 분석',
+  ],
+  reverse: [
+    '일사량 1.0(100% 출력) 극한 시나리오 설정',
+    '태양광 연계점 역송전(Reverse flow) 검출',
+    '변전소 주변압기 및 송출단 역송 조류 모의',
+    '피더별 역조류 발생 구간 및 용량 판정',
+  ],
+  fault: [
+    '계통 고장점 정의 (Fault Study 모드)',
+    '임피던스 행렬(Zbus) 빌드 및 전원 용량 대조',
+    '3상 단락고장(3-phase fault) 시뮬레이션',
+    '각 모선별 고장전류(Isc3) 및 차단 용량 대조',
+  ],
+};
+
+function showProgress(type) {
+  const meta = SIM_META[type];
+  document.getElementById('progress-sim-name').textContent = meta.label.replace('— 결과','');
+  document.getElementById('progress-pct').textContent = '0%';
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('progress-msg').textContent = '해석 엔진 가동 준비...';
+
+  const stepsWrap = document.getElementById('progress-steps');
+  stepsWrap.innerHTML = '';
+  (SIM_STEPS[type] || []).forEach((st, idx) => {
+    const s = document.createElement('div');
+    s.className = 'p-step';
+    s.id = `step-${idx}`;
+    s.textContent = `${idx+1}. ${st}`;
+    stepsWrap.appendChild(s);
+  });
+  document.getElementById('progress-wrap').style.display = 'block';
+}
+
+function updateProgress(pct, msg, type) {
+  document.getElementById('progress-pct').textContent = `${pct}%`;
+  document.getElementById('progress-bar').style.width = `${pct}%`;
+  document.getElementById('progress-msg').textContent = msg;
+
+  const steps = SIM_STEPS[type] || [];
+  const total = steps.length;
+  const currentIdx = Math.min(Math.floor((pct/100) * total), total-1);
+
+  for (let i=0; i<total; i++) {
+    const el = document.getElementById(`step-${i}`);
+    if (!el) continue;
+    if (i < currentIdx) {
+      el.className = 'p-step done';
+    } else if (i === currentIdx && pct < 100) {
+      el.className = 'p-step active';
+    } else if (pct === 100) {
+      el.className = 'p-step done';
+    }
+  }
+}
+
+function hideProgress() {
+  setTimeout(() => {
+    document.getElementById('progress-wrap').style.display = 'none';
+  }, 1000);
+}
+
+function runSim(type) {
+  if (editMode) return; // 편집 중에는 기동 불가
+  const meta = SIM_META[type];
+  const btn  = document.getElementById(meta.btn);
+
+  document.querySelectorAll('.sim-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('loading', 'active');
+  document.getElementById('no-result').style.display = 'none';
+  document.getElementById('result-title').style.display = 'none';
+  document.getElementById('result-summary').style.display = 'none';
+  document.getElementById('result-table').style.display = 'none';
+  document.getElementById('colorscale').style.display = 'none';
+  clearSimOverlay();
+  currentSim = type;
+
+  showProgress(type);
+
+  const steps = SIM_STEPS[type] || [];
+  const totalSteps = steps.length;
+  let stepIdx = 0;
+  const stepPcts = [10, 28, 48, 68, 88];
+  const timer = setInterval(() => {
+    if (stepIdx < totalSteps - 1) {
+      stepIdx++;
+      updateProgress(stepPcts[stepIdx] || 88, steps[stepIdx], type);
+    }
+  }, 900);
+
+  fetch(`/api/sim/${type}`)
+    .then(res => {
+      clearInterval(timer);
+      if (!res.ok) return res.json().then(d => Promise.reject(d.error || '서버 오류'));
+      return res.json();
+    })
+    .then(data => {
+      btn.classList.remove('loading');
+      updateProgress(100, '완료 ✓', type);
+      hideProgress();
+      renderResult(type, data);
+    })
+    .catch(err => {
+      clearInterval(timer);
+      btn.classList.remove('loading', 'active');
+      document.getElementById('progress-wrap').style.display = 'none';
+      document.getElementById('no-result').textContent = '오류: ' + (err || '시뮬레이션 실패');
+      document.getElementById('no-result').style.display = 'block';
+    });
+}
+
+function resetSim() {
+  document.querySelectorAll('.sim-btn').forEach(b => b.classList.remove('active'));
+  clearSimOverlay();
+  currentSim = null;
+  document.getElementById('no-result').textContent = '시뮬레이션 버튼을 클릭하세요';
+  document.getElementById('no-result').style.display='block';
+  document.getElementById('result-title').style.display='none';
+  document.getElementById('result-summary').style.display='none';
+  document.getElementById('result-table').style.display='none';
+  document.getElementById('colorscale').style.display='none';
+  document.getElementById('sim-commentary').style.display='none';
+
+  if (cy) {
+    cy.nodes().removeClass('selected');
+  }
+  document.getElementById('node-info-content').innerHTML = '<span style="color:#3d444d;font-style:italic">노드를 클릭하세요</span>';
+}
+
+// ── 14. Commentary (요약 해설) ───────────────────────────────────
+function showCommentary(items) {
+  const el = document.getElementById('sim-commentary');
+  el.innerHTML = '';
+  items.forEach(it => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    row.style.fontSize = '11px';
+    row.style.lineHeight = '1.6';
+    row.style.marginBottom = '8px';
+    
+    let iconClass = 'com-icon';
+    let icon = 'ℹ️';
+    if (it.type === 'warn')    { iconClass = 'com-warn'; icon = '⚠️'; }
+    if (it.type === 'caution') { iconClass = 'com-caution'; icon = '🔸'; }
+    if (it.type === 'ok')      { iconClass = 'com-ok'; icon = '✓'; }
+
+    row.innerHTML = `<span class="com-icon ${iconClass}">${icon}</span><span style="color:#c9d1d9">${it.msg}</span>`;
+    el.appendChild(row);
+  });
+  el.style.display = 'block';
+}
+
+function commentVoltage(data) {
+  const buses = Object.entries(data.buses);
+  const overs = buses.filter(x => x[1].status === 'over');
+  const unders = buses.filter(x => x[1].status === 'under');
+  const maxPu  = Math.max(...buses.map(x => x[1].pu));
+  const minPu  = Math.min(...buses.map(x => x[1].pu));
+
+  const items = [];
+  if (overs.length > 0) {
+    items.push({ type: 'warn', msg: `계통 내 <b>과전압(>1.05 pu)</b> 모선이 <b>${overs.length}개</b> 검출되었습니다. 태양광 연계량이 계통 수용 한계를 초과했을 가능성이 큽니다.` });
+  }
+  if (unders.length > 0) {
+    items.push({ type: 'warn', msg: `계통 내 <b>저전압(<0.95 pu)</b> 모선이 <b>${unders.length}개</b> 검출되었습니다. 말단 부하 밀집 지역을 확인하세요.` });
+  }
+  if (overs.length === 0 && unders.length === 0) {
+    items.push({ type: 'ok', msg: '모든 노드의 전압이 규정 범위(0.95 ~ 1.05 pu) 이내로 지극히 안정적입니다.' });
+  }
+  items.push({ type: 'info', msg: `계통 내 최고 전압은 <b>${maxPu} pu</b> 이며, 최저 전압은 <b>${minPu} pu</b> 입니다.` });
+  showCommentary(items);
+}
+
+function commentThermal(data) {
+  const lines = Object.entries(data.lines);
+  const overs = lines.filter(x => x[1].status === 'overload');
+  const warns = lines.filter(x => x[1].status === 'warning');
+
+  const items = [];
+  if (overs.length > 0) {
+    items.push({ type: 'warn', msg: `허용전류(Ampacity)를 초과하여 <b>과부하(100%↑)</b> 상태인 선로가 <b>${overs.length}개</b> 존재합니다. 전선 굵기 보강이 시급합니다.` });
+  }
+  if (warns.length > 0) {
+    items.push({ type: 'caution', msg: `부하율이 위험 영역(80% ~ 100%)에 진입한 경고 선로가 <b>${warns.length}개</b> 검출되었습니다.` });
+  }
+  if (overs.length === 0 && warns.length === 0) {
+    items.push({ type: 'ok', msg: '모든 배전선로의 조류 전류량이 전선 규격별 허용 전류 이내에서 원활하게 흐르고 있습니다.' });
+  }
+  showCommentary(items);
+}
+
+function commentReverse(data) {
+  const pvs = Object.values(data.pvs);
+  const revPvs = pvs.filter(x => x.reverse).length;
+  const revLines = Object.values(data.lines).filter(x => x.reverse).length;
+
+  const items = [];
+  if (revLines > 0) {
+    items.push({ type: 'caution', msg: `대용량 태양광 발전으로 인해 변전소 방향으로 전력이 역송되는 <b>역조류 선로 구간이 ${revLines}개</b> 존재합니다.` });
+  }
+  if (revPvs > 0) {
+    items.push({ type: 'info', msg: `배전망 말단에서 총 <b>${revPvs}개</b>의 PV 시스템이 로컬 부하를 초과 전력 공급하여 역조류를 발생시키고 있습니다.` });
+  } else {
+    items.push({ type: 'ok', msg: '태양광 발전 전력이 배전망 내부 부하로 자체 소비되어 역송전 조류가 발생하지 않습니다.' });
+  }
+  showCommentary(items);
+}
+
+function commentFault(data) {
+  const buses = Object.entries(data.buses);
+  const highs = buses.filter(x => x[1].status === 'high');
+
+  const items = [];
+  if (highs.length > 0) {
+    items.push({ type: 'warn', msg: `3상 단락고장 시 <b>5kA를 초과하는 고단락 전류</b>가 발생하는 위험 버스가 <b>${highs.length}개</b> 있습니다. 차단기 정격 용량 대조가 필요합니다.` });
+  } else {
+    items.push({ type: 'ok', msg: '모든 버스의 단락 고장 전류가 5kA 이하로 차단기 차단 정격 범위 내에서 안전하게 소멸될 수 있습니다.' });
+  }
+  showCommentary(items);
+}
+
+function shortName(name) {
+  return (name||'').replace('CN_','').replace(/_/g,' ').substring(0,10);
 }
 </script>
 </body>

@@ -36,6 +36,19 @@ def fetch_network(driver):
             MATCH (ec:EnergyConsumer)-[:CONNECTED_AT]->(cn:ConnectivityNode)
             RETURN ec.name AS name, ec.p_mw AS p_mw, ec.q_mvar AS q_mvar, cn.name AS bus
         """).data()
+        # 구간 부하: cim_neo4j_loader.py 는 부하를 ACLineSegment.load_p_mw 로 저장한다
+        # (구간 말단 = to 접속점에 접속). EnergyConsumer 와 이름이 겹치면 EnergyConsumer 우선.
+        seg_loads = s.run("""
+            MATCH (seg:ACLineSegment)-[:CONNECTS]->(cn:ConnectivityNode)
+            WHERE seg.load_p_mw IS NOT NULL AND seg.load_p_mw > 0
+              AND NOT (cn)-[:CONNECTS]->(seg)
+            RETURN DISTINCT coalesce(seg.load_name, 'Load_' + seg.name) AS name,
+                   seg.load_p_mw AS p_mw,
+                   coalesce(seg.load_q_mvar, seg.load_p_mw * 0.3287) AS q_mvar,
+                   cn.name AS bus
+        """).data()
+        names = {ld["name"] for ld in loads}
+        loads += [ld for ld in seg_loads if ld["name"] not in names]
         pvs = s.run("""
             MATCH (gu:SolarUnit)-[:CONNECTED_AT]->(cn:ConnectivityNode)
             RETURN gu.name AS name, gu.rated_mw AS rated_mw, cn.name AS bus

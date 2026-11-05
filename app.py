@@ -122,27 +122,24 @@ def _build_and_solve(pv_irradiance=0.5, mode="snapshot"):
     return dss.Solution.Converged(), lines, pvs, cbs
 
 
+FEEDER_CBS = {"Feeder 1": "CB_변전소출구", "Feeder 2": "CB2_변전소출구2"}
+
+
 def _get_feeder_loads():
+    """피더 인출 차단기의 3상 유효/무효 전력 [MW/MVar].
+
+    부호: 양수 = 변전소 → 피더 (정방향), 음수 = 피더 → 변전소 (역조류).
+    (OpenDSS Powers() 의 1단자 값은 해당 요소로 유입되는 방향이 양수)
+    """
     feeder_data = {}
-    # Feeder 1 (CB_변전소출구)
-    if dss.Circuit.SetActiveElement("Line.CB_변전소출구"):
-        pwr = dss.CktElement.Powers()
-        # 3상 송전단 유효/무효 전력 합산 후 MW/MVar 변환 (유출 방향을 양수로)
-        p_mw = -sum(pwr[i] for i in range(0, 6, 2)) / 1000.0
-        q_mvar = -sum(pwr[i+1] for i in range(0, 6, 2)) / 1000.0
-        feeder_data["Feeder 1"] = {"p_mw": round(p_mw, 3), "q_mvar": round(q_mvar, 3)}
-    else:
-        feeder_data["Feeder 1"] = {"p_mw": 0.0, "q_mvar": 0.0}
-
-    # Feeder 2 (CB2_변전소출구2)
-    if dss.Circuit.SetActiveElement("Line.CB2_변전소출구2"):
-        pwr = dss.CktElement.Powers()
-        p_mw = -sum(pwr[i] for i in range(0, 6, 2)) / 1000.0
-        q_mvar = -sum(pwr[i+1] for i in range(0, 6, 2)) / 1000.0
-        feeder_data["Feeder 2"] = {"p_mw": round(p_mw, 3), "q_mvar": round(q_mvar, 3)}
-    else:
-        feeder_data["Feeder 2"] = {"p_mw": 0.0, "q_mvar": 0.0}
-
+    for feeder, cb in FEEDER_CBS.items():
+        if dss.Circuit.SetActiveElement(f"Line.{cb}"):
+            pwr = dss.CktElement.Powers()
+            p_mw = sum(pwr[i] for i in range(0, 6, 2)) / 1000.0
+            q_mvar = sum(pwr[i + 1] for i in range(0, 6, 2)) / 1000.0
+            feeder_data[feeder] = {"p_mw": round(p_mw, 3) + 0.0, "q_mvar": round(q_mvar, 3) + 0.0}
+        else:
+            feeder_data[feeder] = {"p_mw": 0.0, "q_mvar": 0.0}
     return feeder_data
 
 

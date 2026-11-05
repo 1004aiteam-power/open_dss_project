@@ -76,12 +76,17 @@ python3 app.py    # http://localhost:5100 (PORT 환경변수로 변경 가능)
 | API | 설명 |
 |---|---|
 | `GET /api/graph` | 그래프 데이터 조회 (캐시됨) |
+| `GET /api/health` | Neo4j 연결 상태 확인 (화면 우측 상단 표시등) |
 | `GET /api/graph/refresh` | 그래프 캐시 무효화 후 재조회 |
 | `POST /api/graph/save` | 편집한 그래프를 Neo4j에 저장 (단일 트랜잭션, 저장 전 자동 백업) |
 | `GET /api/sim/voltage` | 모선 전압 조류계산 (PV 50% 출력) |
 | `GET /api/sim/thermal` | 선로 전류/열용량 부하율 계산 |
 | `GET /api/sim/reverse` | PV 전체 출력 시 역조류 확인 |
 | `GET /api/sim/fault` | 3상 고장전류(Isc) 계산 |
+
+API 오류는 항상 JSON(`{"success": false, "error": "...", "code": "..."}`)으로 반환됩니다.
+OpenDSS는 프로세스 전역 상태를 쓰므로 시뮬레이션은 한 번에 하나씩 순서대로 실행됩니다
+(대기 한도 `DSS_LOCK_TIMEOUT`, 기본 60초).
 
 #### 그래프 저장 안전장치
 

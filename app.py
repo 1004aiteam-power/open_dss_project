@@ -3,9 +3,11 @@ Flask + Neo4j — 전력계통 Viewer + 시뮬레이션 API
 """
 from flask import Flask, jsonify, render_template, request
 from neo4j import GraphDatabase
+from neo4j.exceptions import ServiceUnavailable, AuthError
+from werkzeug.exceptions import HTTPException
 from pathlib import Path
 import opendssdirect as dss
-import tempfile, os, json
+import tempfile, os, json, threading, functools, logging
 from datetime import datetime
 
 from network_model import (
@@ -18,6 +20,63 @@ app = Flask(__name__)
 driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 _graph_cache = None  # 그래프 데이터 메모리 캐시
+log = logging.getLogger(__name__)
+
+# OpenDSS(opendssdirect)는 프로세스 전역 상태를 쓰므로 동시에 하나의 계산만 허용한다.
+# Flask 는 멀티스레드로 띄워 그래프 조회 등은 계산 중에도 응답하도록 한다.
+_dss_lock = threading.Lock()
+DSS_LOCK_TIMEOUT = float(os.environ.get("DSS_LOCK_TIMEOUT", 60))
+
+
+class SimBusyError(RuntimeError):
+    pass
+
+
+def dss_locked(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not _dss_lock.acquire(timeout=DSS_LOCK_TIMEOUT):
+            raise SimBusyError()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            _dss_lock.release()
+    return wrapper
+
+
+# ── 오류 응답 (API 는 항상 JSON) ──────────────────────────────
+
+def _api_error(message, status, code):
+    return jsonify({"success": False, "error": message, "code": code}), status
+
+
+@app.errorhandler(ServiceUnavailable)
+def _on_neo4j_down(e):
+    return _api_error(f"Neo4j DB에 연결할 수 없습니다 ({NEO4J_URI}). DB 실행 여부를 확인하세요.",
+                      503, "DB_UNAVAILABLE")
+
+
+@app.errorhandler(AuthError)
+def _on_neo4j_auth(e):
+    return _api_error("Neo4j 인증에 실패했습니다. NEO4J_USER / NEO4J_PASSWORD 를 확인하세요.",
+                      503, "DB_AUTH")
+
+
+@app.errorhandler(SimBusyError)
+def _on_busy(e):
+    return _api_error("다른 시뮬레이션이 실행 중입니다. 잠시 후 다시 시도하세요.", 503, "SIM_BUSY")
+
+
+@app.errorhandler(Exception)
+def _on_unexpected(e):
+    if isinstance(e, HTTPException):
+        if request.path.startswith("/api/"):
+            return _api_error(e.description, e.code, e.name.upper().replace(" ", "_"))
+        return e
+    log.exception("처리되지 않은 오류: %s", request.path)
+    if type(e).__module__.startswith(("dss", "opendssdirect")):
+        return _api_error(f"OpenDSS 계산 오류: {e}", 500, "DSS_ERROR")
+    return _api_error(f"서버 내부 오류: {type(e).__name__}: {e}", 500, "INTERNAL")
 
 
 # ── 그래프 조회 ────────────────────────────────────────────────
@@ -99,6 +158,16 @@ def api_graph():
     return jsonify(query_graph())
 
 
+@app.route("/api/health")
+def api_health():
+    """Neo4j 연결 상태 확인 (프론트의 연결 표시등용)"""
+    try:
+        driver.verify_connectivity()
+        return jsonify({"ok": True, "neo4j": "connected", "sim_busy": _dss_lock.locked()})
+    except Exception as e:
+        return jsonify({"ok": False, "neo4j": "disconnected", "error": str(e)}), 503
+
+
 @app.route("/api/graph/refresh")
 def api_graph_refresh():
     global _graph_cache
@@ -107,10 +176,11 @@ def api_graph_refresh():
 
 
 @app.route("/api/sim/voltage")
+@dss_locked
 def sim_voltage():
     converged, *_ = _build_and_solve(pv_irradiance=0.5)
     if not converged:
-        return jsonify({"error": "수렴 실패"}), 500
+        return _api_error("조류계산이 수렴하지 않았습니다.", 500, "NOT_CONVERGED")
     result = {}
     bus_names = dss.Circuit.AllBusNames()
     bus_volts = dss.Circuit.AllBusMagPu()
@@ -130,10 +200,11 @@ def sim_voltage():
 
 
 @app.route("/api/sim/thermal")
+@dss_locked
 def sim_thermal():
     converged, lines, *_ = _build_and_solve(pv_irradiance=0.5)
     if not converged:
-        return jsonify({"error": "수렴 실패"}), 500
+        return _api_error("조류계산이 수렴하지 않았습니다.", 500, "NOT_CONVERGED")
     result = {}
     dss.Lines.First()
     while True:
@@ -151,10 +222,11 @@ def sim_thermal():
 
 
 @app.route("/api/sim/reverse")
+@dss_locked
 def sim_reverse():
     converged, lines, pvs, cbs = _build_and_solve(pv_irradiance=1.0)
     if not converged:
-        return jsonify({"error": "수렴 실패"}), 500
+        return _api_error("조류계산이 수렴하지 않았습니다.", 500, "NOT_CONVERGED")
     pv_result = {}
     for pv in pvs:
         safe = pv["name"].replace(" ","_")
@@ -179,10 +251,11 @@ def sim_reverse():
 
 
 @app.route("/api/sim/fault")
+@dss_locked
 def sim_fault():
     converged, *_ = _build_and_solve(pv_irradiance=0.0, mode="faultstudy")
     if not converged:
-        return jsonify({"error": "수렴 실패"}), 500
+        return _api_error("조류계산이 수렴하지 않았습니다.", 500, "NOT_CONVERGED")
     result = {}
     for bname in dss.Circuit.AllBusNames():
         dss.Circuit.SetActiveBus(bname)
@@ -340,4 +413,4 @@ def save_graph():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5100))
-    app.run(debug=False, port=port, use_reloader=False, threaded=False)
+    app.run(debug=False, port=port, use_reloader=False, threaded=True)

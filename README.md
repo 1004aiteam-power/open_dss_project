@@ -77,11 +77,22 @@ python3 app.py    # http://localhost:5100 (PORT 환경변수로 변경 가능)
 |---|---|
 | `GET /api/graph` | 그래프 데이터 조회 (캐시됨) |
 | `GET /api/graph/refresh` | 그래프 캐시 무효화 후 재조회 |
-| `POST /api/graph/save` | 편집한 그래프를 Neo4j에 저장 |
+| `POST /api/graph/save` | 편집한 그래프를 Neo4j에 저장 (단일 트랜잭션, 저장 전 자동 백업) |
 | `GET /api/sim/voltage` | 모선 전압 조류계산 (PV 50% 출력) |
 | `GET /api/sim/thermal` | 선로 전류/열용량 부하율 계산 |
 | `GET /api/sim/reverse` | PV 전체 출력 시 역조류 확인 |
 | `GET /api/sim/fault` | 3상 고장전류(Isc) 계산 |
+
+#### 그래프 저장 안전장치
+
+- 저장은 하나의 트랜잭션으로 처리되어, 도중에 실패하면 DB는 저장 전 상태 그대로 유지됩니다.
+- 노드가 없는 요청, 존재하지 않는 노드를 가리키는 연결은 거부됩니다.
+- 저장 직전 그래프가 `backups/graph_*.json`에 백업됩니다 (최근 `BACKUP_KEEP`개, 기본 20개).
+- `EDIT_TOKEN` 환경변수를 설정하면 저장 시 토큰이 필요합니다 (웹 화면에서 처음 저장할 때 입력).
+
+```bash
+export EDIT_TOKEN="원하는-토큰"
+```
 
 ### 3. CLI로 조류계산만 실행
 

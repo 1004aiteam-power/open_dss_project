@@ -603,6 +603,13 @@ let connectSourceNode = null;
 let currentSim = null;
 
 // ── 4. Cytoscape 객체 및 드로잉 빌더 ─────────────────────────────
+// DB에서 온 문자열을 innerHTML에 넣기 전에 반드시 이스케이프 (XSS 방지)
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
 let cy;
 const tooltip = document.getElementById('tooltip');
 
@@ -961,7 +968,7 @@ function initCytoscape(elements) {
     if (editMode) return; // 편집 모드 중에는 툴팁 차단
     const ele = evt.target;
     const isNode = ele.isNode();
-    const html = isNode ? tipHtml(ele.data()) : `<b>${ele.data('type')}</b>`;
+    const html = isNode ? tipHtml(ele.data()) : `<b>${esc(ele.data('type'))}</b>`;
     
     tooltip.innerHTML = html;
     tooltip.style.opacity = 1;
@@ -1097,7 +1104,7 @@ function showNodePropertyForm(node) {
   inputs.push(`
     <div class="prop-form-group">
       <label>이름 (Name)</label>
-      <input type="text" id="prop-name" value="${n.name || ''}">
+      <input type="text" id="prop-name" value="${esc(n.name)}">
     </div>
   `);
 
@@ -1162,11 +1169,11 @@ function showNodePropertyForm(node) {
   }
 
   const html = `
-    <span class="ititle">⚡ ${n.label} 편집</span>
+    <span class="ititle">⚡ ${esc(n.label)} 편집</span>
     <div style="margin-top: 10px;">
       ${inputs.join('')}
-      <button class="prop-action-btn prop-btn-save" onclick="saveNodeProps('${n.id}')">속성 적용</button>
-      <button class="prop-action-btn prop-btn-del" onclick="deleteNode('${n.id}')">설비 삭제</button>
+      <button class="prop-action-btn prop-btn-save" onclick="saveNodeProps('${esc(n.id)}')">속성 적용</button>
+      <button class="prop-action-btn prop-btn-del" onclick="deleteNode('${esc(n.id)}')">설비 삭제</button>
     </div>
   `;
 
@@ -1238,23 +1245,38 @@ function saveEdit() {
     });
   });
 
+  postSave({ nodes, links });
+}
+
+// EDIT_TOKEN 이 설정된 서버는 401을 돌려준다 → 토큰을 입력받아 재시도
+function postSave(payload, retried) {
+  let token = '';
+  try { token = sessionStorage.getItem('editToken') || ''; } catch (e) {}
+
   fetch('/api/graph/save', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nodes, links })
+    headers: { 'Content-Type': 'application/json', 'X-Edit-Token': token },
+    body: JSON.stringify(payload)
   })
-  .then(res => res.json())
-  .then(data => {
+  .then(res => res.json().catch(() => ({ success: false, error: `서버 응답 오류 (HTTP ${res.status})` }))
+                        .then(data => ({ status: res.status, data })))
+  .then(({ status, data }) => {
     if (data.success) {
-      alert('계통망이 Neo4j DB에 저장되었습니다!');
+      alert(`계통망이 Neo4j DB에 저장되었습니다.\n노드 ${data.nodes}개, 연결 ${data.links}개` +
+            (data.backup ? `\n이전 상태 백업: ${data.backup}` : ''));
       switchMode(false);
       loadGraphData();
+    } else if (status === 401 && !retried) {
+      const t = prompt('편집 토큰을 입력하세요 (서버의 EDIT_TOKEN)');
+      if (t == null) return;
+      try { sessionStorage.setItem('editToken', t); } catch (e) {}
+      postSave(payload, true);
     } else {
-      alert('오류 발생: ' + (data.error || '저장 실패'));
+      alert('저장되지 않았습니다. DB는 변경 전 상태 그대로입니다.\n사유: ' + (data.error || '저장 실패'));
     }
   })
   .catch(err => {
-    alert('서버 저장 실패: ' + err);
+    alert('서버에 연결할 수 없어 저장하지 못했습니다: ' + err);
   });
 }
 
@@ -1269,7 +1291,7 @@ loadGraphData();
 
 // ── 8. Tooltip 헬퍼 함수 ──────────────────────────────────────────
 function tipHtml(n) {
-  const rows = [`<b>${n.label}</b>: ${n.name||''}`];
+  const rows = [`<b>${esc(n.label)}</b>: ${esc(n.name)}`];
   if (n.voltage_kv)    rows.push(`전압: ${n.voltage_kv} kV`);
   if (n.rated_mw)      rows.push(`정격: ${n.rated_mw} MW`);
   if (n.p_mw)          rows.push(`유효전력: ${n.p_mw} MW`);
@@ -1277,14 +1299,14 @@ function tipHtml(n) {
   if (n.conductor_mm2) rows.push(`전선: ACSR ${n.conductor_mm2}mm²`);
   if (n.flow_p_kw != null) rows.push(`조류(P): <b>${(n.flow_p_kw/1000).toFixed(2)} MW</b>`);
   if (n.flow_q_kvar != null) rows.push(`조류(Q): ${(n.flow_q_kvar/1000).toFixed(2)} Mvar`);
-  if (n.load_p_mw != null) rows.push(`구간부하: <b style="color:#ffa657">${n.load_p_mw} MW</b>${n.load_name ? ` (${n.load_name})` : ''}`);
+  if (n.load_p_mw != null) rows.push(`구간부하: <b style="color:#ffa657">${n.load_p_mw} MW</b>${n.load_name ? ` (${esc(n.load_name)})` : ''}`);
   return rows.join('<br>');
 }
 
 // ── 9. Node Selection ─────────────────────────────────────────────
 function selectNode(n) {
-  const rows = [`<span class="ititle">${n.label}</span>`,
-    `<span class="key">이름</span> <span class="val">${n.name||'-'}</span>`];
+  const rows = [`<span class="ititle">${esc(n.label)}</span>`,
+    `<span class="key">이름</span> <span class="val">${esc(n.name||'-')}</span>`];
   if (n.voltage_kv)    rows.push(`<span class="key">전압</span> <span class="val">${n.voltage_kv} kV</span>`);
   if (n.rated_mw)      rows.push(`<span class="key">정격</span> <span class="val">${n.rated_mw} MW</span>`);
   if (n.p_mw)          rows.push(`<span class="key">유효전력</span> <span class="val">${n.p_mw} MW</span>`);
@@ -1296,7 +1318,7 @@ function selectNode(n) {
   if (n.flow_p_kw != null) rows.push(`<span class="key">조류 P</span> <span class="val" style="color:#e3b341;font-weight:700">${(n.flow_p_kw/1000).toFixed(2)} MW</span>`);
   if (n.flow_q_kvar != null) rows.push(`<span class="key">조류 Q</span> <span class="val">${(n.flow_q_kvar/1000).toFixed(2)} Mvar</span>`);
   if (n.load_p_mw != null) rows.push(`<span class="key">구간 부하</span> <span class="val" style="color:#ffa657;font-weight:700">${n.load_p_mw} MW</span>`);
-  if (n.load_name) rows.push(`<span class="key">부하명</span> <span class="val">${n.load_name}</span>`);
+  if (n.load_name) rows.push(`<span class="key">부하명</span> <span class="val">${esc(n.load_name)}</span>`);
   if (n.normalOpen!==undefined) rows.push(`<span class="key">상태</span> <span class="val">${n.normalOpen?'개방':'투입'}</span>`);
 
   document.getElementById('node-info-content').innerHTML = rows.join('<br>');
@@ -1429,7 +1451,7 @@ function renderVoltage(data) {
   tbody.innerHTML='';
   Object.entries(buses).sort((a,b)=>a[1].pu-b[1].pu).forEach(([name,v])=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${name}</td><td>${v.pu}</td><td>${pill(v.status, v.status==='normal'?'정상':v.status==='over'?'과전압':'저전압')}</td>`;
+    tr.innerHTML=`<td>${esc(name)}</td><td>${v.pu}</td><td>${pill(v.status, v.status==='normal'?'정상':v.status==='over'?'과전압':'저전압')}</td>`;
     tbody.appendChild(tr);
   });
   document.getElementById('result-table').style.display='table';
@@ -1485,7 +1507,7 @@ function renderThermal(data) {
   Object.entries(lines).sort((a,b)=>b[1].loading_pct-a[1].loading_pct).forEach(([name,v])=>{
     const tr=document.createElement('tr');
     const statusText = v.status==='overload'?'과부하':v.status==='warning'?'경고':'정상';
-    tr.innerHTML=`<td>${name}</td><td>${v.current_a}</td><td>${v.loading_pct}%</td><td>${pill(v.status,statusText)}</td>`;
+    tr.innerHTML=`<td>${esc(name)}</td><td>${v.current_a}</td><td>${v.loading_pct}%</td><td>${pill(v.status,statusText)}</td>`;
     tbody.appendChild(tr);
   });
   document.getElementById('result-table').style.display='table';
@@ -1540,7 +1562,7 @@ function renderReverse(data) {
   tbody.innerHTML='';
   Object.entries(pvs).forEach(([name,v])=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${name}</td><td>${v.output_kw}</td><td>${v.reverse?pill('reverse','역조류'):pill('normal','정상')}</td>`;
+    tr.innerHTML=`<td>${esc(name)}</td><td>${v.output_kw}</td><td>${v.reverse?pill('reverse','역조류'):pill('normal','정상')}</td>`;
     tbody.appendChild(tr);
   });
   document.getElementById('result-table').style.display='table';
@@ -1582,7 +1604,7 @@ function renderFault(data) {
   tbody.innerHTML='';
   Object.entries(buses).sort((a,b)=>b[1].isc3_ka-a[1].isc3_ka).forEach(([name,v])=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${name}</td><td>${v.isc3_ka}</td><td>${v.mva}</td>`;
+    tr.innerHTML=`<td>${esc(name)}</td><td>${v.isc3_ka}</td><td>${v.mva}</td>`;
     tbody.appendChild(tr);
   });
   document.getElementById('result-table').style.display='table';

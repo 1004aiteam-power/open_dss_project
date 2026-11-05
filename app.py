@@ -5,7 +5,8 @@ from flask import Flask, jsonify, render_template, request
 from neo4j import GraphDatabase
 from pathlib import Path
 import opendssdirect as dss
-import tempfile, os
+import tempfile, os, json
+from datetime import datetime
 
 from network_model import (
     NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, AMPACITY,
@@ -197,97 +198,144 @@ def sim_fault():
     return jsonify({"converged": converged, "buses": result, "feeders": _get_feeder_loads()})
 
 
+# ── 그래프 저장 ────────────────────────────────────────────────
+#
+# 저장은 하나의 트랜잭션으로 처리한다. 중간에 실패하면 전체가 롤백되어
+# 관계만 지워진 "반쪽 계통"이 DB에 남지 않는다.
+# 저장 직전 상태는 backups/ 에 JSON으로 남긴다 (최근 BACKUP_KEEP개 유지).
+# EDIT_TOKEN 환경변수가 설정되면 X-Edit-Token 헤더가 일치해야 저장된다.
+
+VALID_LABELS = {"Substation", "Breaker", "ConnectivityNode", "SolarUnit",
+                "ACLineSegment", "EnergyConsumer"}
+VALID_REL_TYPES = {"CONNECTS", "TERMINAL", "CONNECTED_AT"}
+BACKUP_DIR  = Path(os.environ.get("BACKUP_DIR", Path(__file__).parent / "backups"))
+BACKUP_KEEP = int(os.environ.get("BACKUP_KEEP", 20))
+EDIT_TOKEN  = os.environ.get("EDIT_TOKEN")
+
+
+class SaveValidationError(ValueError):
+    pass
+
+
+def _validate_payload(data):
+    """저장 요청 검증. 문제가 있으면 SaveValidationError."""
+    if not isinstance(data, dict):
+        raise SaveValidationError("요청 본문이 JSON 객체가 아닙니다.")
+    nodes, links = data.get("nodes"), data.get("links")
+    if not isinstance(nodes, list) or not isinstance(links, list):
+        raise SaveValidationError("nodes, links 는 배열이어야 합니다.")
+    if not nodes:
+        raise SaveValidationError("노드가 하나도 없는 그래프는 저장할 수 없습니다. (전체 삭제 방지)")
+
+    ids = set()
+    for n in nodes:
+        nid = n.get("id") if isinstance(n, dict) else None
+        if not isinstance(nid, str) or not nid:
+            raise SaveValidationError("id 가 없는 노드가 있습니다.")
+        if nid in ids:
+            raise SaveValidationError(f"중복된 노드 id: {nid}")
+        ids.add(nid)
+    for l in links:
+        if not isinstance(l, dict) or l.get("source") not in ids or l.get("target") not in ids:
+            raise SaveValidationError("존재하지 않는 노드를 가리키는 연결이 있습니다.")
+    return nodes, links
+
+
+def _scalar_props(d, exclude):
+    """Neo4j 에 저장 가능한 값(스칼라/스칼라 리스트)만 남긴다."""
+    ok = (str, int, float, bool)
+    out = {}
+    for k, v in d.items():
+        if k in exclude or v is None:
+            continue
+        if isinstance(v, ok) or (isinstance(v, list) and all(isinstance(x, ok) for x in v)):
+            out[k] = v
+    return out
+
+
+def _to_float(v):
+    try:
+        return float(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _backup_graph():
+    """현재 DB 그래프를 JSON 파일로 백업하고 오래된 백업은 정리."""
+    global _graph_cache
+    _graph_cache = None
+    snapshot = query_graph()
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    path = BACKUP_DIR / f"graph_{datetime.now():%Y%m%d_%H%M%S_%f}.json"
+    path.write_text(json.dumps(snapshot, ensure_ascii=False, default=str), encoding="utf-8")
+    for old in sorted(BACKUP_DIR.glob("graph_*.json"))[:-BACKUP_KEEP]:
+        old.unlink(missing_ok=True)
+    return path
+
+
+def _save_tx(tx, nodes, links):
+    """그래프 전체를 동기화 (단일 트랜잭션 안에서 실행)."""
+    client_ids = {n["id"] for n in nodes}
+    db_ids = {r["id"] for r in tx.run("MATCH (n) RETURN elementId(n) AS id")}
+
+    # 1. 관계 삭제 후 재생성 / 클라이언트에 없는 노드 삭제
+    tx.run("MATCH ()-[r]->() DELETE r")
+    deleted = list(db_ids - client_ids)
+    if deleted:
+        tx.run("MATCH (n) WHERE elementId(n) IN $ids DETACH DELETE n", ids=deleted)
+
+    # 2. 노드 갱신/생성
+    id_mapping = {}
+    for n in nodes:
+        nid = n["id"]
+        props = _scalar_props(n, {"id", "label", "x", "y"})
+        x, y = _to_float(n.get("x")), _to_float(n.get("y"))
+        if nid in db_ids:
+            tx.run("MATCH (n) WHERE elementId(n) = $id SET n += $props, n.x = $x, n.y = $y",
+                   id=nid, props=props, x=x, y=y)
+            id_mapping[nid] = nid
+        else:
+            label = n.get("label") if n.get("label") in VALID_LABELS else "ConnectivityNode"
+            rec = tx.run(f"CREATE (n:{label}) SET n = $props, n.x = $x, n.y = $y "
+                         "RETURN elementId(n) AS id", props=props, x=x, y=y).single()
+            id_mapping[nid] = rec["id"]
+
+    # 3. 관계 재생성
+    for l in links:
+        rel = l.get("type") if l.get("type") in VALID_REL_TYPES else "CONNECTS"
+        props = _scalar_props(l, {"id", "source", "target", "type"})
+        rec = tx.run(f"""
+            MATCH (a), (b) WHERE elementId(a) = $src AND elementId(b) = $tgt
+            CREATE (a)-[r:{rel}]->(b) SET r += $props
+            RETURN count(r) AS c
+        """, src=id_mapping[l["source"]], tgt=id_mapping[l["target"]], props=props).single()
+        if rec["c"] != 1:
+            raise SaveValidationError("연결 생성에 실패했습니다. 저장을 취소합니다.")
+
+    return {"nodes": len(nodes), "links": len(links), "deleted_nodes": len(deleted)}
+
+
 @app.route("/api/graph/save", methods=["POST"])
 def save_graph():
     global _graph_cache
-    data = request.json
-    nodes = data.get("nodes", [])
-    links = data.get("links", [])
+    if EDIT_TOKEN and request.headers.get("X-Edit-Token") != EDIT_TOKEN:
+        return jsonify({"success": False, "error": "편집 권한이 없습니다. (토큰 불일치)"}), 401
 
-    with driver.session() as session:
-        # 1. 모든 관계 삭제 (새로 빌드)
-        session.run("MATCH ()-[r]->() DELETE r")
+    try:
+        nodes, links = _validate_payload(request.get_json(silent=True))
+    except SaveValidationError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 
-        # 2. 클라이언트 노드 ID 셋 확보
-        client_node_ids = {n["id"] for n in nodes}
+    backup = _backup_graph()
+    try:
+        with driver.session() as session:
+            summary = session.execute_write(_save_tx, nodes, links)
+    except SaveValidationError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    finally:
+        _graph_cache = None
 
-        # 3. DB에 존재하나 클라이언트에 없는 노드 검출 후 DETACH DELETE
-        db_nodes = session.run("MATCH (n) RETURN elementId(n) AS id").data()
-        db_node_ids = {r["id"] for r in db_nodes}
-        deleted_ids = db_node_ids - client_node_ids
-        
-        if deleted_ids:
-            session.run("MATCH (n) WHERE elementId(n) IN $ids DETACH DELETE n", ids=list(deleted_ids))
-
-        # 4. 노드 동기화 및 신규 ID 매핑
-        id_mapping = {}
-        valid_labels = {"Substation", "Breaker", "ConnectivityNode", "SolarUnit", "ACLineSegment", "EnergyConsumer"}
-
-        for n in nodes:
-            nid = n.get("id")
-            label = n.get("label", "ConnectivityNode")
-            
-            # Neo4j 저장에 적절한 속성 필터링 (id, label, x, y 제외)
-            props = {k: v for k, v in n.items() if k not in ["id", "label", "x", "y"]}
-            
-            # x, y 좌표는 실수형으로 형변환하여 저장
-            try:
-                x = float(n.get("x")) if n.get("x") is not None else None
-                y = float(n.get("y")) if n.get("y") is not None else None
-            except ValueError:
-                x, y = None, None
-
-            # DB 존재 여부 판단
-            exists = False
-            # UUID의 경우 보통 DB elementId로 존재하지 않음 (문자열 형식)
-            if nid and not nid.startswith("new_") and len(nid) > 10:
-                res_check = session.run("MATCH (n) WHERE elementId(n) = $id RETURN count(n) AS c", id=nid).single()
-                if res_check and res_check["c"] > 0:
-                    exists = True
-
-            if exists:
-                # 기존 노드 업데이트
-                session.run("""
-                    MATCH (n) WHERE elementId(n) = $id
-                    SET n += $props, n.x = $x, n.y = $y
-                """, id=nid, props=props, x=x, y=y)
-                id_mapping[nid] = nid
-            else:
-                # 신규 노드 생성
-                node_label = label if label in valid_labels else "ConnectivityNode"
-                res_create = session.run(f"""
-                    CREATE (n:{node_label})
-                    SET n = $props, n.x = $x, n.y = $y
-                    RETURN elementId(n) AS new_id
-                """, props=props, x=x, y=y).single()
-                
-                new_id = res_create["new_id"]
-                id_mapping[nid] = new_id
-
-        # 5. 에지(관계) 재생성
-        valid_types = {"CONNECTS", "TERMINAL", "CONNECTED_AT"}
-        for l in links:
-            source_raw = l.get("source")
-            target_raw = l.get("target")
-            rel_type = l.get("type", "CONNECTS")
-            edge_type = rel_type if rel_type in valid_types else "CONNECTS"
-
-            source_id = id_mapping.get(source_raw, source_raw)
-            target_id = id_mapping.get(target_raw, target_raw)
-
-            # properties(r)을 위한 데이터 필터링
-            props = {k: v for k, v in l.items() if k not in ["id", "source", "target", "type"]}
-
-            session.run(f"""
-                MATCH (a), (b)
-                WHERE elementId(a) = $src AND elementId(b) = $tgt
-                CREATE (a)-[r:{edge_type}]->(b)
-                SET r += $props
-            """, src=source_id, tgt=target_id, props=props)
-
-    # 캐시 무효화
-    _graph_cache = None
-    return jsonify({"success": True})
+    return jsonify({"success": True, "backup": backup.name, **summary})
 
 
 if __name__ == "__main__":

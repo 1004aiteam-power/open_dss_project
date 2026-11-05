@@ -113,3 +113,5 @@ python3 segment8_pv_comparison.py  # 특정 구간(Section8) PV 연계 비교 �
 | `segment8_pv_comparison.py` | 특정 구간 PV 연계 전후 비교 분석 |
 | `templates/index.html` | Cytoscape.js 기반 그래프 뷰어/에디터 UI |
 | `dss_output/` | `run_opendss.py` 실행 결과 CSV (전압/손실/전력) |
+| `block_diagram.md` | 시스템 아키텍처 및 블록다이어그램 |
+| `work_to_do.md` | 향후 작업 목록 |

@@ -392,6 +392,25 @@
   .db-status.ok .dot   { background: #56d364; }
   .db-status.down .dot { background: #f85149; }
   .db-status.down { color: #f85149; }
+  /* ── 해석 조건 / 판정 ── */
+  #sim-cond { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 4px; }
+  #sim-cond label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: #8b949e; }
+  #sim-cond select {
+    padding: 5px 6px; font-size: 11px; border-radius: 6px;
+    background: #0d1117; color: #c9d1d9; border: 1px solid #30363d;
+  }
+  #sim-cond-hint { font-size: 10px; color: #6e7681; line-height: 1.5; margin-bottom: 10px; }
+  #result-verdict {
+    display: none; margin: 8px 0 10px; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #30363d; background: #161b22; font-size: 12px; line-height: 1.55;
+  }
+  #result-verdict .v-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  #result-verdict .v-badge { font-weight: 700; font-size: 13px; padding: 1px 10px; border-radius: 10px; }
+  #result-verdict .v-cond { font-size: 10px; color: #8b949e; margin-left: auto; text-align: right; }
+  #result-verdict .v-meta { font-size: 10px; color: #8b949e; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  #result-verdict.ok   { border-color: #238636; } #result-verdict.ok   .v-badge { background: #23863633; color: #56d364; }
+  #result-verdict.warn { border-color: #9e6a03; } #result-verdict.warn .v-badge { background: #9e6a0333; color: #e3b341; }
+  #result-verdict.fail { border-color: #da3633; } #result-verdict.fail .v-badge { background: #da363333; color: #f85149; }
   #error-banner {
     position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 200;
     display: none; align-items: center; gap: 12px; max-width: min(720px, calc(100vw - 32px));
@@ -477,6 +496,27 @@
   <div id="sim-panel">
     <h3>시뮬레이션</h3>
 
+    <div id="sim-cond">
+      <label>부하 조건
+        <select id="cond-load">
+          <option value="">기본</option>
+          <option value="max">최대부하 (100%)</option>
+          <option value="min">최소부하 (30%)</option>
+        </select>
+      </label>
+      <label>PV 출력
+        <select id="cond-pv">
+          <option value="">기본</option>
+          <option value="0">0%</option>
+          <option value="0.25">25%</option>
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1">100%</option>
+        </select>
+      </label>
+    </div>
+    <div id="sim-cond-hint">기본: 전압·열용량 = 최대부하 + PV 50%, 역조류 = 최소부하 + PV 100%. 단락용량은 조건 무관.</div>
+
     <button class="sim-btn" id="btn-voltage" onclick="runSim('voltage')">
       <span class="icon">📊</span>
       <span class="label">
@@ -499,7 +539,7 @@
       <span class="icon">🔄</span>
       <span class="label">
         <b>역조류</b>
-        <small>PV 100% 출력 기준 조류계산</small>
+        <small>PV 출력 시 변전소 역송 여부</small>
       </span>
       <span class="badge-tag">PF</span>
     </button>
@@ -531,6 +571,8 @@
     <div id="no-result">시뮬레이션 버튼을 클릭하세요</div>
 
     <div id="result-title"></div>
+
+    <div id="result-verdict" role="status"></div>
 
     <div id="colorscale">
       <canvas id="colorscale-bar" width="280" height="14" style="width:100%;border-radius:4px"></canvas>
@@ -1483,6 +1525,7 @@ function renderResult(type, data) {
   titleEl.style.display = 'block';
 
   clearSimOverlay(); 
+  renderVerdict(data.judgement);
 
   if (type==='voltage')  renderVoltage(data);
   else if (type==='thermal') renderThermal(data);
@@ -1490,6 +1533,23 @@ function renderResult(type, data) {
   else if (type==='fault')   renderFault(data);
 
   drawCBFeederLoads(data.feeders);
+}
+
+/* ── 판정 카드 (판정은 서버 코드가 하고 화면은 그대로 보여주기만 함) ── */
+function renderVerdict(j) {
+  const el = document.getElementById('result-verdict');
+  if (!j) { el.style.display = 'none'; return; }
+  const cls = j.verdict === '적합' ? 'ok' : (j.verdict === '주의' ? 'warn' : 'fail');
+  el.className = cls;
+  const meta = j.worst_element
+    ? `최악: ${esc(j.worst_element)} = ${esc(j.worst_value)} ${esc(j.unit)} (기준 ${esc(j.limit)} ${esc(j.unit)})` +
+      (j.reason_code ? ` · ${esc(j.reason_code)}` : '')
+    : '';
+  el.innerHTML = `
+    <div class="v-head"><span class="v-badge">${esc(j.verdict)}</span><span class="v-cond">${esc(j.condition)}</span></div>
+    <div>${esc(j.message)}</div>
+    ${meta ? `<div class="v-meta">${meta}</div>` : ''}`;
+  el.style.display = 'block';
 }
 
 /* ── Voltage ── */
@@ -1824,7 +1884,17 @@ function runSim(type) {
     }
   }, 900);
 
-  apiFetch(`/api/sim/${type}`)
+  const params = new URLSearchParams();
+  if (type !== 'fault') {
+    const load = document.getElementById('cond-load').value;
+    const pv = document.getElementById('cond-pv').value;
+    if (load) params.set('load', load);
+    if (pv) params.set('pv', pv);
+  }
+  const qs = params.toString();
+  document.getElementById('result-verdict').style.display = 'none';
+
+  apiFetch(`/api/sim/${type}` + (qs ? `?${qs}` : ''))
     .then(data => {
       clearInterval(timer);
       btn.classList.remove('loading');
@@ -1849,6 +1919,7 @@ function resetSim() {
   document.getElementById('no-result').textContent = '시뮬레이션 버튼을 클릭하세요';
   document.getElementById('no-result').style.display='block';
   document.getElementById('result-title').style.display='none';
+  document.getElementById('result-verdict').style.display='none';
   document.getElementById('result-summary').style.display='none';
   document.getElementById('result-table').style.display='none';
   document.getElementById('colorscale').style.display='none';

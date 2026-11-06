@@ -63,11 +63,13 @@ def fetch_network(driver):
     return sub, buses, lines, loads, pvs, cbs
 
 
-def build_dss_script(sub, lines, loads, pvs, cbs, pv_irradiance=0.5, mode="snapshot", export_dir=None):
+def build_dss_script(sub, lines, loads, pvs, cbs, pv_irradiance=0.5, mode="snapshot", export_dir=None,
+                     load_mult=1.0):
     """네트워크 데이터 → OpenDSS 스크립트 텍스트 생성
 
     export_dir 이 주어지면 조류계산 결과(Voltages/Losses/Powers)를 CSV로 내보내는
     Export 명령을 스크립트 끝에 추가한다 (run_opendss.py CLI 용도).
+    load_mult 는 모든 부하에 곱하는 배율 (1.0 = 최대부하 기준값).
     """
     kv = sub["kv"]
     sc = []
@@ -100,6 +102,7 @@ def build_dss_script(sub, lines, loads, pvs, cbs, pv_irradiance=0.5, mode="snaps
     w("Set algorithm=Newton")
     w("Set maxiter=100")
     w("Set tolerance=0.0001")
+    w(f"Set loadmult={load_mult}")
     w(f"Solve mode={mode}")
 
     if export_dir is not None:

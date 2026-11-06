@@ -79,10 +79,34 @@ python3 app.py    # http://localhost:5100 (PORT 환경변수로 변경 가능)
 | `GET /api/health` | Neo4j 연결 상태 확인 (화면 우측 상단 표시등) |
 | `GET /api/graph/refresh` | 그래프 캐시 무효화 후 재조회 |
 | `POST /api/graph/save` | 편집한 그래프를 Neo4j에 저장 (단일 트랜잭션, 저장 전 자동 백업) |
-| `GET /api/sim/voltage` | 모선 전압 조류계산 (PV 50% 출력) |
-| `GET /api/sim/thermal` | 선로 전류/열용량 부하율 계산 |
-| `GET /api/sim/reverse` | PV 전체 출력 시 역조류 확인 |
+| `GET /api/sim/voltage` | 모선 전압 조류계산 + 판정 (기본: 최대부하 + PV 50%) |
+| `GET /api/sim/thermal` | 선로 전류/열용량 부하율 계산 + 판정 (기본: 최대부하 + PV 50%) |
+| `GET /api/sim/reverse` | 역조류 확인 + 판정 (기본: 최소부하 + PV 100%) |
 | `GET /api/sim/fault` | 3상 고장전류(Isc) 계산 |
+
+#### 해석 조건과 판정
+
+전압·열용량·역조류 API는 쿼리 파라미터로 해석 조건을 받습니다 (웹 화면의 '부하 조건', 'PV 출력' 선택).
+
+| 파라미터 | 값 | 설명 |
+|---|---|---|
+| `pv` | `0` ~ `1` | PV 출력 비율 (정격 대비) |
+| `load` | `max` / `min` / `0` ~ `1.5` | 최대부하(배율 1.0), 최소부하(배율 `MIN_LOAD_RATIO`, 기본 0.3 — 가정값), 또는 직접 배율 |
+
+```bash
+curl "http://localhost:5100/api/sim/voltage?load=min&pv=1"
+```
+
+응답의 `judgement`에 코드로 계산한 판정이 들어 있습니다. 화면은 이 값을 그대로 보여주기만 합니다.
+
+```json
+{"verdict": "부적합", "reason_code": "REVERSE_FLOW", "worst_element": "Feeder 1",
+ "worst_value": -1.358, "limit": 0.0, "unit": "MW",
+ "condition": "최소부하(30%) + PV 100%", "message": "Feeder 1 인출점에서 변전소 방향으로 1.358 MW 역송됩니다."}
+```
+
+- `verdict`: `적합` / `주의` / `부적합`
+- `reason_code`: `OVERVOLTAGE`(>1.05 pu), `UNDERVOLTAGE`(<0.95 pu), `THERMAL_OVERLOAD`(>100%), `THERMAL_WARNING`(>80%), `REVERSE_FLOW`(피더 인출점 역송), `REVERSE_FLOW_SECTION`(구간 역조류만)
 
 API 오류는 항상 JSON(`{"success": false, "error": "...", "code": "..."}`)으로 반환됩니다.
 OpenDSS는 프로세스 전역 상태를 쓰므로 시뮬레이션은 한 번에 하나씩 순서대로 실행됩니다

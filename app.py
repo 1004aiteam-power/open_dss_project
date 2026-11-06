@@ -108,9 +108,10 @@ def query_graph():
 
 # ── OpenDSS 공통 헬퍼 ─────────────────────────────────────────
 
-def _build_and_solve(pv_irradiance=0.5, mode="snapshot"):
+def _build_and_solve(pv_irradiance=0.5, mode="snapshot", load_mult=1.0):
     sub, buses, lines, loads, pvs, cbs = fetch_network(driver)
-    script = build_dss_script(sub, lines, loads, pvs, cbs, pv_irradiance=pv_irradiance, mode=mode)
+    script = build_dss_script(sub, lines, loads, pvs, cbs, pv_irradiance=pv_irradiance,
+                              mode=mode, load_mult=load_mult)
 
     tmp = tempfile.NamedTemporaryFile(suffix=".dss", mode="w", delete=False, encoding="utf-8")
     tmp.write(script)
@@ -141,6 +142,116 @@ def _get_feeder_loads():
         else:
             feeder_data[feeder] = {"p_mw": 0.0, "q_mvar": 0.0}
     return feeder_data
+
+
+# ── 해석 조건 / 판정 ──────────────────────────────────────────
+#
+# 해석 조건은 쿼리 파라미터로 받는다.
+#   pv   : PV 출력 비율 0~1 (예: 0.5 = 정격의 50%)
+#   load : "max"(최대부하, 배율 1.0) | "min"(최소부하, 배율 MIN_LOAD_RATIO) | 0~1.5 숫자 배율
+# 판정 기준은 아래 상수로 관리한다. 판정은 코드가 하고, 화면/LLM 은 결과를 서술만 한다.
+
+V_MAX_PU, V_MIN_PU = 1.05, 0.95
+THERMAL_LIMIT_PCT, THERMAL_WARN_PCT = 100.0, 80.0
+MIN_LOAD_RATIO = float(os.environ.get("MIN_LOAD_RATIO", 0.3))   # 최소부하 = 최대부하의 30% (가정값)
+
+
+class ParamError(ValueError):
+    pass
+
+
+@app.errorhandler(ParamError)
+def _on_param_error(e):
+    return _api_error(str(e), 400, "BAD_PARAM")
+
+
+def _sim_condition(default_pv, default_load):
+    """쿼리 파라미터 → 해석 조건 dict"""
+    pv_raw = request.args.get("pv", default_pv)
+    try:
+        pv = float(pv_raw)
+    except (TypeError, ValueError):
+        raise ParamError(f"pv 는 0~1 사이 숫자여야 합니다: {pv_raw!r}")
+    if not 0.0 <= pv <= 1.0:
+        raise ParamError(f"pv 는 0~1 사이여야 합니다: {pv}")
+
+    load_raw = str(request.args.get("load", default_load)).strip().lower()
+    if load_raw == "max":
+        level, mult = "max", 1.0
+    elif load_raw == "min":
+        level, mult = "min", MIN_LOAD_RATIO
+    else:
+        try:
+            mult = float(load_raw)
+        except ValueError:
+            raise ParamError(f"load 는 max, min 또는 0~1.5 숫자여야 합니다: {load_raw!r}")
+        if not 0.0 <= mult <= 1.5:
+            raise ParamError(f"load 배율은 0~1.5 사이여야 합니다: {mult}")
+        level = "custom"
+
+    load_txt = {"max": "최대부하", "min": f"최소부하({mult:.0%})"}.get(level, f"부하 {mult:.0%}")
+    return {"pv_output": pv, "load_level": level, "load_mult": round(mult, 4),
+            "label": f"{load_txt} + PV {pv:.0%}"}
+
+
+def _verdict(ok, reason, worst, value, limit, unit, condition, message, warn=False):
+    return {"verdict": "적합" if ok and not warn else ("주의" if ok else "부적합"),
+            "reason_code": reason, "worst_element": worst, "worst_value": value,
+            "limit": limit, "unit": unit, "condition": condition["label"], "message": message}
+
+
+def judge_voltage(buses, condition):
+    """모선 전압 판정: 1.05 pu 초과 → OVERVOLTAGE, 0.95 pu 미만 → UNDERVOLTAGE"""
+    if not buses:
+        return _verdict(False, "NO_DATA", None, None, None, "pu", condition, "모선 전압 결과가 없습니다.")
+    hi_bus = max(buses, key=lambda b: buses[b]["pu"])
+    lo_bus = min(buses, key=lambda b: buses[b]["pu"])
+    hi, lo = buses[hi_bus]["pu"], buses[lo_bus]["pu"]
+    if hi > V_MAX_PU:
+        return _verdict(False, "OVERVOLTAGE", hi_bus, hi, V_MAX_PU, "pu", condition,
+                        f"{hi_bus} 모선 전압 {hi} pu 가 상한 {V_MAX_PU} pu 를 초과합니다.")
+    if lo < V_MIN_PU:
+        return _verdict(False, "UNDERVOLTAGE", lo_bus, lo, V_MIN_PU, "pu", condition,
+                        f"{lo_bus} 모선 전압 {lo} pu 가 하한 {V_MIN_PU} pu 미만입니다.")
+    margin = round(min(V_MAX_PU - hi, lo - V_MIN_PU), 4)
+    worst, val, lim = (hi_bus, hi, V_MAX_PU) if V_MAX_PU - hi <= lo - V_MIN_PU else (lo_bus, lo, V_MIN_PU)
+    return _verdict(True, None, worst, val, lim, "pu", condition,
+                    f"모든 모선 전압이 {V_MIN_PU}~{V_MAX_PU} pu 이내입니다 "
+                    f"(최고 {hi} pu @ {hi_bus}, 최저 {lo} pu @ {lo_bus}, 여유 {margin} pu).")
+
+
+def judge_thermal(lines, condition):
+    """선로 부하율 판정: 100% 초과 → THERMAL_OVERLOAD, 80% 초과 → 주의"""
+    if not lines:
+        return _verdict(False, "NO_DATA", None, None, None, "%", condition, "선로 결과가 없습니다.")
+    worst = max(lines, key=lambda n: lines[n]["loading_pct"])
+    pct, cur, rated = lines[worst]["loading_pct"], lines[worst]["current_a"], lines[worst]["rated_a"]
+    if pct > THERMAL_LIMIT_PCT:
+        return _verdict(False, "THERMAL_OVERLOAD", worst, pct, THERMAL_LIMIT_PCT, "%", condition,
+                        f"{worst} 선로 전류 {cur} A 가 허용전류 {rated} A 의 {pct}% 로 과부하입니다.")
+    warn = pct > THERMAL_WARN_PCT
+    return _verdict(True, "THERMAL_WARNING" if warn else None, worst, pct, THERMAL_LIMIT_PCT, "%", condition,
+                    f"최대 부하율은 {worst} 선로 {pct}% ({cur} A / {rated} A)"
+                    + (f"로 경고 기준 {THERMAL_WARN_PCT:.0f}% 를 넘습니다." if warn else " 입니다."),
+                    warn=warn)
+
+
+def judge_reverse(feeders, lines, condition):
+    """역조류 판정: 피더 인출(차단기)에서 변전소로 역송 → REVERSE_FLOW, 구간 역조류만 → 주의"""
+    rev_feeders = {f: v["p_mw"] for f, v in feeders.items() if v["p_mw"] < 0}
+    rev_lines = [n for n, v in lines.items() if v["reverse"]]
+    if rev_feeders:
+        worst = min(rev_feeders, key=rev_feeders.get)
+        mw = rev_feeders[worst]
+        return _verdict(False, "REVERSE_FLOW", worst, mw, 0.0, "MW", condition,
+                        f"{worst} 인출점에서 변전소 방향으로 {abs(mw)} MW 역송됩니다.")
+    if rev_lines:
+        return _verdict(True, "REVERSE_FLOW_SECTION", rev_lines[0], len(rev_lines), 0, "개", condition,
+                        f"변전소 역송은 없으나 {len(rev_lines)}개 구간에서 역방향 조류가 발생합니다.",
+                        warn=True)
+    min_f = min(feeders, key=lambda f: feeders[f]["p_mw"]) if feeders else None
+    return _verdict(True, None, min_f, feeders[min_f]["p_mw"] if min_f else None, 0.0, "MW", condition,
+                    "모든 구간에서 조류가 정방향(변전소 → 부하)입니다.")
 
 
 # ── Flask 라우트 ───────────────────────────────────────────────
@@ -175,7 +286,8 @@ def api_graph_refresh():
 @app.route("/api/sim/voltage")
 @dss_locked
 def sim_voltage():
-    converged, *_ = _build_and_solve(pv_irradiance=0.5)
+    cond = _sim_condition(default_pv=0.5, default_load="max")
+    converged, *_ = _build_and_solve(pv_irradiance=cond["pv_output"], load_mult=cond["load_mult"])
     if not converged:
         return _api_error("조류계산이 수렴하지 않았습니다.", 500, "NOT_CONVERGED")
     result = {}
@@ -190,7 +302,8 @@ def sim_voltage():
         result[bname] = {"pu": round(avg,4), "phases": [round(v,4) for v in vals],
                          "status": "over" if avg>1.05 else ("under" if avg<0.95 else "normal")}
     losses = dss.Circuit.Losses(); src = dss.Circuit.TotalPower()
-    return jsonify({"converged": True, "buses": result,
+    return jsonify({"converged": True, "condition": cond, "judgement": judge_voltage(result, cond),
+        "buses": result,
         "total_loss_kw": round(losses[0]/1000,2), "total_loss_kvar": round(losses[1]/1000,2),
         "source_mw": round(-src[0]/1000,3), "source_mvar": round(-src[1]/1000,3),
         "feeders": _get_feeder_loads()})
@@ -199,7 +312,9 @@ def sim_voltage():
 @app.route("/api/sim/thermal")
 @dss_locked
 def sim_thermal():
-    converged, lines, *_ = _build_and_solve(pv_irradiance=0.5)
+    cond = _sim_condition(default_pv=0.5, default_load="max")
+    converged, lines, _pvs, cbs = _build_and_solve(pv_irradiance=cond["pv_output"], load_mult=cond["load_mult"])
+    cb_names = {cb["name"].replace(" ", "_").lower() for cb in cbs}
     if not converged:
         return _api_error("조류계산이 수렴하지 않았습니다.", 500, "NOT_CONVERGED")
     result = {}
@@ -210,18 +325,23 @@ def sim_thermal():
         currents = [imag[i] for i in range(0, min(6,len(imag)), 2)]
         i_max = max(currents) if currents else 0.0
         ln_info = next((l for l in lines if l["name"].replace(" ","_").lower()==name.lower()), None)
-        rated = AMPACITY.get(ln_info["mm2"] if ln_info else 0, 310)
+        if name.lower() in cb_names:
+            rated = AMPACITY[160]          # 차단기 구간은 ACSR160 linecode 로 모델링됨
+        else:
+            rated = AMPACITY.get(ln_info["mm2"] if ln_info else 0, 310)
         pct   = round(i_max/rated*100,1) if rated else 0
         result[name] = {"current_a": round(i_max,1), "rated_a": rated, "loading_pct": pct,
                         "status": "overload" if pct>100 else ("warning" if pct>80 else "normal")}
         if not dss.Lines.Next(): break
-    return jsonify({"converged": True, "lines": result, "feeders": _get_feeder_loads()})
+    return jsonify({"converged": True, "condition": cond, "judgement": judge_thermal(result, cond),
+                    "lines": result, "feeders": _get_feeder_loads()})
 
 
 @app.route("/api/sim/reverse")
 @dss_locked
 def sim_reverse():
-    converged, lines, pvs, cbs = _build_and_solve(pv_irradiance=1.0)
+    cond = _sim_condition(default_pv=1.0, default_load="min")
+    converged, lines, pvs, cbs = _build_and_solve(pv_irradiance=cond["pv_output"], load_mult=cond["load_mult"])
     if not converged:
         return _api_error("조류계산이 수렴하지 않았습니다.", 500, "NOT_CONVERGED")
     pv_result = {}
@@ -241,10 +361,12 @@ def sim_reverse():
         line_result[name] = {"p_kw": round(p1,1), "reverse": p1 < 0}
         if not dss.Lines.Next(): break
     losses = dss.Circuit.Losses(); src = dss.Circuit.TotalPower()
-    return jsonify({"converged": True, "pv_irradiance": 1.0,
+    feeders = _get_feeder_loads()
+    return jsonify({"converged": True, "condition": cond, "pv_irradiance": cond["pv_output"],
+        "judgement": judge_reverse(feeders, line_result, cond),
         "pvs": pv_result, "lines": line_result,
         "source_mw": round(-src[0]/1000,3), "total_loss_kw": round(losses[0]/1000,2),
-        "feeders": _get_feeder_loads()})
+        "feeders": feeders})
 
 
 @app.route("/api/sim/fault")
